@@ -55,7 +55,8 @@
           "iosAppId": "ca-app-pub-3940256099942544~1458002511",
           "userTrackingUsageDescription": "Size daha uygun reklamlar göstermek için kullanılır"
         }
-      ]
+      ],
+      "./plugins/withAndroidBuildConfig.js"
     ],
     "experiments": {
       "typedRoutes": true
