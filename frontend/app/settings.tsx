@@ -1,4 +1,5 @@
 import Ionicons from "@react-native-vector-icons/ionicons";
+import * as Haptics from "expo-haptics";
 import { useRouter } from "expo-router";
 import React, { useEffect, useState } from "react";
 import { Pressable, Switch, Text, TextInput, View } from "react-native";
@@ -30,6 +31,7 @@ export default function SettingsScreen() {
   const close = () => (router.canGoBack() ? router.back() : router.replace("/"));
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
+  const [confirmReset, setConfirmReset] = useState(false);
 
   const save = async () => {
     const v = nick.trim();
@@ -147,11 +149,27 @@ export default function SettingsScreen() {
             <Switch
               testID="settings-haptics-switch"
               value={profile.haptics}
-              onValueChange={(v) => profile.setHaptics(v)}
+              onValueChange={(v) => {
+                profile.setHaptics(v);
+                if (v) Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => undefined);
+              }}
               trackColor={{ true: colors.info, false: colors.border }}
               thumbColor={colors.surfaceSecondary}
             />
           </View>
+          <View style={styles.divider} />
+          <Pressable
+            testID="settings-haptics-test-button"
+            accessibilityRole="button"
+            onPress={() => Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => undefined)}
+            style={styles.rowItem}
+          >
+            <View style={styles.rowText}>
+              <Text style={styles.rowTitle}>Titreşimi dene</Text>
+              <Text style={styles.help}>Cihaz titremiyorsa sistem ayarlarından dokunsal geri bildirimi açın</Text>
+            </View>
+            <Ionicons name="phone-portrait-outline" size={22} color={colors.info} />
+          </Pressable>
           <View style={styles.divider} />
           <Pressable testID="settings-reset-tutorial-button" accessibilityRole="button" onPress={() => profile.resetTutorial()} style={styles.rowItem}>
             <View style={styles.rowText}>
@@ -159,6 +177,25 @@ export default function SettingsScreen() {
               <Text style={styles.help}>{profile.tutorialSeen ? "Bir sonraki koşuda ipuçları görünür" : "Ipuçları bir sonraki koşuda gösterilecek"}</Text>
             </View>
             <Ionicons name="refresh" size={22} color={colors.info} />
+          </Pressable>
+          <View style={styles.divider} />
+          <Pressable
+            testID="settings-reset-data-button"
+            accessibilityRole="button"
+            onPress={() => {
+              if (confirmReset) {
+                void profile.resetLocalData();
+                setConfirmReset(false);
+                setMsg(null);
+              } else setConfirmReset(true);
+            }}
+            style={styles.rowItem}
+          >
+            <View style={styles.rowText}>
+              <Text style={[styles.rowTitle, { color: colors.error }]}>{confirmReset ? "Emin misin? Tekrar dokun" : "Yerel skorları sıfırla"}</Text>
+              <Text style={styles.help}>Cihazdaki koşu geçmişi, en iyi skor ve altınlar silinir</Text>
+            </View>
+            <Ionicons name="trash-outline" size={22} color={colors.error} />
           </Pressable>
         </View>
 

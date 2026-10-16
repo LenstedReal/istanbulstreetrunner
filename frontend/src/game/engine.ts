@@ -1,4 +1,5 @@
 import type { ExpoWebGLRenderingContext } from "expo-gl";
+import { Platform } from "react-native";
 import * as THREE from "three";
 
 import {
@@ -142,12 +143,22 @@ export class RunnerEngine {
       getContext: () => gl,
     };
     const canvas = ((gl as unknown as { canvas?: HTMLCanvasElement }).canvas ?? fakeCanvas) as HTMLCanvasElement;
-    this.renderer = new THREE.WebGLRenderer({
-      canvas,
-      context: gl as unknown as WebGL2RenderingContext,
-      antialias: false,
-      powerPreference: "high-performance",
-    });
+    // expo-gl's native context inherits from a global `WebGLRenderingContext` shim, which
+    // makes three.js (r163+) believe it is WebGL 1 and throw. The context is really WebGL 2,
+    // so hide the global while the renderer is constructed.
+    const g = globalThis as unknown as { WebGLRenderingContext?: unknown };
+    const savedCtor = g.WebGLRenderingContext;
+    if (Platform.OS !== "web") g.WebGLRenderingContext = undefined;
+    try {
+      this.renderer = new THREE.WebGLRenderer({
+        canvas,
+        context: gl as unknown as WebGL2RenderingContext,
+        antialias: false,
+        powerPreference: "high-performance",
+      });
+    } finally {
+      g.WebGLRenderingContext = savedCtor;
+    }
     this.renderer.setPixelRatio(1);
     this.renderer.setSize(w, h, false);
     this.renderer.setClearColor(SCENE.haze);

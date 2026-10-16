@@ -37,6 +37,7 @@ interface ProfileApi extends ProfileState {
   setMusicTrack: (id: string) => Promise<void>;
   markTutorialSeen: () => Promise<void>;
   resetTutorial: () => Promise<void>;
+  resetLocalData: () => Promise<void>;
   ensureOnline: () => Promise<string | null>;
   recoverOnline: () => Promise<string | null>;
 }
@@ -231,9 +232,15 @@ export function ProfileProvider({ children }: { children: React.ReactNode }) {
     await storage.setItem(KEYS.tutorialSeen, false);
   }, []);
 
+  /** Wipes local runs, best score and coins (online profile is kept). */
+  const resetLocalData = useCallback(async () => {
+    setState((prev) => ({ ...prev, bestScore: 0, totalCoins: 0, localScores: [] }));
+    await Promise.all([storage.setItem(KEYS.bestScore, 0), storage.setItem(KEYS.totalCoins, 0), storage.setItem(KEYS.localScores, "[]")]);
+  }, []);
+
   const value = useMemo<ProfileApi>(
-    () => ({ ...state, recordRun, setNickname, setHaptics, setSound, setMusic, setShadows, setMusicTrack, markTutorialSeen, resetTutorial, ensureOnline, recoverOnline }),
-    [state, recordRun, setNickname, setHaptics, setSound, setMusic, setShadows, setMusicTrack, markTutorialSeen, resetTutorial, ensureOnline, recoverOnline],
+    () => ({ ...state, recordRun, setNickname, setHaptics, setSound, setMusic, setShadows, setMusicTrack, markTutorialSeen, resetTutorial, resetLocalData, ensureOnline, recoverOnline }),
+    [state, recordRun, setNickname, setHaptics, setSound, setMusic, setShadows, setMusicTrack, markTutorialSeen, resetTutorial, resetLocalData, ensureOnline, recoverOnline],
   );
 
   return <ProfileContext.Provider value={value}>{children}</ProfileContext.Provider>;

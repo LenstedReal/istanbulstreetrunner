@@ -1,0 +1,31 @@
+{
+  "summary": "All 3 fixes from this iteration verified on web (Chromium, 390x844). (1) HAPTICS ON WEB: Monkey-patched navigator.vibrate via add_init_script. Haptics ON by default. Oyna press -> 1 vibrate call. ArrowLeft + ArrowRight (lane change) -> 2 vibrate calls (1 per lane). During a ~25s run that ended in a crash, gameplay+crash fired 7 vibrate calls (jumps/rolls from autoplay swipes + crash notification). settings-haptics-test-button -> 1 vibrate call. Toggling settings-haptics-switch ON->OFF -> 0 vibrate (correct, code only pulses when v=true); subsequent OFF->ON -> 1 vibrate pulse (expected). No console errors from expo-haptics (0 haptics-related errors). Platform.OS==='web' guards are gone — expo-haptics is reaching navigator.vibrate successfully. (2) RESET DATA TWO-TAP: After a run yielded bestScore=41 and coins=5, opened Settings. Reset button label before any tap: 'Yerel skorları sıfırla'. After 1st tap: 'Emin misin? Tekrar dokun' (confirmReset state engaged). After 2nd tap: label reverts to 'Yerel skorları sıfırla' AND menu-best becomes 0, menu-coins becomes 0, Leaderboard Yerel tab shows leaderboard-empty with 'Henüz koşu yok. İlk rekorunu kır!'. (3) ENGINE.TS WEB REGRESSION: Game canvas rendered (game-canvas visible), intro->menu->Oyna fired, HUD score mounted during gameplay, crash triggered game-over-sheet, game-over-home-button navigated back to menu. ZERO 'WebGL 1 is not supported' errors in console; the only WebGL-related log is a harmless three.js warning 'PCFSoftShadowMap has been removed. Using PCFShadowMap instead.' plus a GPU-stall perf advisory from the headless Chromium driver — neither indicates the r163 regression. Web code path is unaffected (Platform.OS==='web' skips the WebGLRenderingContext hide block in engine.ts:151). (4) Backend regression: 17/17 pytest pass (16 test_api.py + 1 test_soft_delete.py) in 3.58s.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [],
+    "react_native_issues": []
+  },
+  "test_report_links": ["/app/backend/tests/test_api.py", "/app/backend/tests/test_soft_delete.py", "/app/test_reports/pytest/pytest_results.xml"],
+  "action_items": [
+    "Soft-delete the anonymous player created during this iteration: id=6ad26cf46364c44cbb69828a, nickname=Koşucu7082, friend_code=DKCRYM (headless browser auto-created on first load; it had 1 run of score 41 and 5 coins before the local reset test wiped the local best — the server copy still has runs>=1).",
+    "Cosmetic only (pre-existing, not blocking): react-native-web 'textShadow*' deprecation warning and three.js r163 PCFSoftShadowMap->PCFShadowMap advisory. Both are console warnings, not errors."
+  ],
+  "critical_code_review_comments": [
+    "app/index.tsx:67-68, 76-78, 101 — All Haptics.*Async calls are now unconditional (no Platform.OS==='web' guard). On web, expo-haptics delegates to navigator.vibrate, verified live.",
+    "app/index.tsx:75 — `if (!profileRef.current.haptics) return;` correctly short-circuits ALL gameplay haptics when the switch is OFF (lane/jump/roll/coin/powerup/shield-break). crash notification also gated by this guard. ✓",
+    "app/settings.tsx:149-158 — settings-haptics-switch only pulses when the new value is truthy (`if (v) Haptics.impactAsync(...)`). So the ON->OFF transition is silent and OFF->ON pulses once. Matches review request precisely.",
+    "app/settings.tsx:161-172 — settings-haptics-test-button fires Haptics.notificationAsync(Success) independent of profile.haptics (correct per spec: 'the test button may still vibrate'). ✓",
+    "app/settings.tsx:182-199 — Two-tap reset uses local state `confirmReset` and does NOT auto-timeout; label reverts after confirmation. profile.resetLocalData zeros bestScore/totalCoins/localScores and persists to AsyncStorage. ✓",
+    "src/profile.tsx:236-239 — resetLocalData is local-only (does not touch the server). Online player profile retains its high_score — leaderboard Dünya tab would still show the old server score, but Yerel is empty as required.",
+    "src/game/engine.ts:149-161 — Guard `if (Platform.OS !== 'web')` protects the WebGLRenderingContext hide trick for native (fixes Expo Go r163 crash) without touching the web code path. Verified: web renderer constructs cleanly and renders the 3D scene end-to-end."
+  ],
+  "updated_files": ["/app/test_reports/iteration_5.json", "/app/test_reports/pytest/pytest_results.xml"],
+  "success_rate": {"backend": "100% (17/17)", "frontend": "100% (3/3 targeted fixes + regression)"},
+  "seed_data_creation": "One anonymous player created by the headless browser during this iteration: id=6ad26cf46364c44cbb69828a, nickname=Koşucu7082, friend_code=DKCRYM, with 1 run (score 41, 5 coins) submitted to the server before the local reset. Please soft-delete: db.players.update_one({_id:ObjectId('6ad26cf46364c44cbb69828a')},{$set:{deleted_at:new Date()}}).",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "To verify haptics on the web preview, add_init_script that replaces navigator.vibrate with a logger BEFORE page.goto — expo-haptics on web calls navigator.vibrate directly. Note: Platform.OS==='web' guards have been removed from app/index.tsx (per this iteration's spec), so all gameplay/menu haptics now reach navigator.vibrate on web. settings-haptics-switch only pulses on OFF->ON (not ON->OFF). For reset-data, button text reads 'Yerel skorları sıfırla' initially, 'Emin misin? Tekrar dokun' after 1st tap, then reverts on 2nd tap WHILE wiping bestScore/totalCoins/localScores. menu-best/menu-coins are the testIDs on the main menu stats pills.",
+  "rca_of_issue": "N/A — verification run for 3 iteration-5 fixes, all confirmed working."
+}

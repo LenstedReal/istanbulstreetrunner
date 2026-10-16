@@ -43,3 +43,4 @@ Three lanes (2.5 m), speed ramp ×1.08 every 10 s, 90 s round, barriers (jump), 
 - Launch screen (IntroOverlay, 3-7 s), branding regenerated (scripts/gen_branding.py), app renamed "Istanbul Runner", no Emergent assets.
 - Realism: procedural textures, shadows (toggle), tram/building details, runner facing fixed.
 - Backend soft-delete (deleted_at) + scripts/cleanup_test_data.py; DB cleaned of test accounts; profile self-heals on 404.
+- 2026-06-16 (iter 5): haptics on web (navigator.vibrate) + test button + VIBRATE permission; local data reset; Expo Go crash fix (hide WebGLRenderingContext global while creating three renderer). DB: only the user's own profile (8RNZ49) remains active.

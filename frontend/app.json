@@ -16,7 +16,10 @@
         "foregroundImage": "./assets/images/adaptive-icon.png",
         "backgroundColor": "#D62828"
       },
-      "package": "com.emergent.runforever.zvepxc"
+      "package": "com.emergent.runforever.zvepxc",
+      "permissions": [
+        "android.permission.VIBRATE"
+      ]
     },
     "web": {
       "bundler": "metro",

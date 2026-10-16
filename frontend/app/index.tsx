@@ -64,7 +64,7 @@ export default function GameScreen() {
       audio.duckMusic();
       const { isRecord: rec } = await profileRef.current.recordRun(r);
       setIsRecord(rec);
-      if (rec && profileRef.current.haptics && Platform.OS !== "web") {
+      if (rec && profileRef.current.haptics) {
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => undefined);
       }
       setMode("gameover");
@@ -72,7 +72,7 @@ export default function GameScreen() {
     onEvent: (e: GameEvent) => {
       const sfx = { crash: "crash", coin: "coin", jump: "jump", roll: "roll", lane: "swipe", powerup: "powerup", "shield-break": "shield" } as const;
       audio.play(sfx[e]);
-      if (!profileRef.current.haptics || Platform.OS === "web") return;
+      if (!profileRef.current.haptics) return;
       if (e === "crash") Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error).catch(() => undefined);
       else if (e === "powerup" || e === "shield-break") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => undefined);
       else Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => undefined);
@@ -98,7 +98,7 @@ export default function GameScreen() {
     engine.start();
     setMode("playing");
     audio.startMusic();
-    if (profileRef.current.haptics && Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => undefined);
+    if (profileRef.current.haptics) Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => undefined);
   }, []);
 
   const goHome = useCallback(() => {
