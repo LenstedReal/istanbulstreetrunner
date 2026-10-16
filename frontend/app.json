@@ -20,7 +20,7 @@
         "foregroundImage": "./assets/images/adaptive-icon.png",
         "backgroundColor": "#D62828"
       },
-      "package": "com.emergent.runforever.zvepxc",
+      "package": "com.lenstedreal.istanbulrunner",
       "permissions": [
         "android.permission.VIBRATE"
       ]
