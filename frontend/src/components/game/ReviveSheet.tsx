@@ -61,7 +61,7 @@ export function ReviveSheet({ score, cost, keys, revivesLeft, adsAvailable, busy
       />
       <ChunkyButton
         testID="revive-ad-button"
-        label={busy ? "Reklam yükleniyor…" : adsAvailable ? `Reklam izle · +${cost} anahtar` : "Reklam izle (yalnızca mağaza sürümünde)"}
+        label={busy ? "Reklam yükleniyor…" : `Reklam izle · +${cost} anahtar`}
         icon="play-circle"
         variant="secondary"
         size="lg"

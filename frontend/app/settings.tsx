@@ -33,7 +33,6 @@ export default function SettingsScreen() {
 
   const [adBusy, setAdBusy] = useState(false);
   const [trackMsg, setTrackMsg] = useState<string | null>(null);
-  const [msgAdFree, setMsgAdFree] = useState<string | null>(null);
 
   /** First change is free; later changes need a rewarded ad unless the player is ad-free. */
   const changeTrack = async (id: string) => {
@@ -126,13 +125,8 @@ export default function SettingsScreen() {
             label={profile.adFree ? "Üyeliği yönet" : "Abone ol · 199 ₺ / ay"}
             icon="card"
             variant="gold"
-            onPress={() => setMsgAdFree("Mağaza aboneliği uygulama Google Play'de yayınlandıktan sonra etkinleşir.")}
+            onPress={() => undefined}
           />
-          {msgAdFree ? (
-            <Text testID="settings-adfree-message" style={styles.help}>
-              {msgAdFree}
-            </Text>
-          ) : null}
         </View>
 
         <Text style={styles.section}>Ses</Text>
@@ -140,7 +134,7 @@ export default function SettingsScreen() {
           <View style={styles.rowItem}>
             <View style={styles.rowText}>
               <Text style={styles.rowTitle}>Ses efektleri</Text>
-              
+              <Text style={styles.help}>Zıplama, altın toplama ve çarpışma sesleri</Text>
             </View>
             <Switch testID="settings-sound-switch" value={profile.sound} onValueChange={(v) => profile.setSound(v)} trackColor={{ true: colors.info, false: colors.border }} thumbColor={colors.surfaceSecondary} />
           </View>
@@ -148,14 +142,14 @@ export default function SettingsScreen() {
           <View style={styles.rowItem}>
             <View style={styles.rowText}>
               <Text style={styles.rowTitle}>Müzik</Text>
-              
+              <Text style={styles.help}>Koşu sırasında arka plan müziği</Text>
             </View>
             <Switch testID="settings-music-switch" value={profile.music} onValueChange={(v) => profile.setMusic(v)} trackColor={{ true: colors.info, false: colors.border }} thumbColor={colors.surfaceSecondary} />
           </View>
           <View style={styles.divider} />
           <Text style={styles.rowTitle}>Parça seç</Text>
           <Text style={styles.help}>
-            {profile.adFree ? "Reklamsız üyelik: sınırsız parça değişimi" : profile.songChanges === 0 ? "İlk parça değişimi ücretsiz, sonrakiler kısa bir reklamla" : "Parça değiştirmek için kısa bir reklam izlenir"}
+            {profile.adFree ? "Sınırsız parça değişimi" : profile.songChanges === 0 ? "İlk değişim ücretsiz, sonrası reklamla" : "Parça değiştirmek için reklam izle"}
           </Text>
           {MUSIC_TRACKS.map((t) => {
             const active = t.id === profile.musicTrack;
@@ -193,7 +187,7 @@ export default function SettingsScreen() {
           <View style={styles.rowItem}>
             <View style={styles.rowText}>
               <Text style={styles.rowTitle}>Gölgeler</Text>
-              <Text style={styles.help}>Eski cihazlarda kapatın</Text>
+              <Text style={styles.help}>Daha gerçekçi görüntü · Takılma olursa kapat</Text>
             </View>
             <Switch testID="settings-shadows-switch" value={profile.shadows} onValueChange={(v) => profile.setShadows(v)} trackColor={{ true: colors.info, false: colors.border }} thumbColor={colors.surfaceSecondary} />
           </View>
@@ -201,7 +195,7 @@ export default function SettingsScreen() {
           <View style={styles.rowItem}>
             <View style={styles.rowText}>
               <Text style={styles.rowTitle}>Titreşim</Text>
-              
+              <Text style={styles.help}>Şerit değişimi, altın ve çarpışmada</Text>
             </View>
             <Switch
               testID="settings-haptics-switch"
@@ -223,7 +217,7 @@ export default function SettingsScreen() {
           >
             <View style={styles.rowText}>
               <Text style={styles.rowTitle}>Titreşimi dene</Text>
-              
+              <Text style={styles.help}>Hissetmiyorsan telefonun titreşim ayarını kontrol et</Text>
             </View>
             <Ionicons name="phone-portrait-outline" size={22} color={colors.info} />
           </Pressable>
@@ -231,7 +225,7 @@ export default function SettingsScreen() {
           <Pressable testID="settings-reset-tutorial-button" accessibilityRole="button" onPress={() => profile.resetTutorial()} style={styles.rowItem}>
             <View style={styles.rowText}>
               <Text style={styles.rowTitle}>Öğreticiyi tekrar göster</Text>
-              
+              <Text style={styles.help}>İpuçları bir sonraki koşuda çıkar</Text>
             </View>
             <Ionicons name="refresh" size={22} color={colors.info} />
           </Pressable>
@@ -250,7 +244,7 @@ export default function SettingsScreen() {
           >
             <View style={styles.rowText}>
               <Text style={[styles.rowTitle, { color: colors.error }]}>{confirmReset ? "Emin misin? Tekrar dokun" : "Yerel skorları sıfırla"}</Text>
-              
+              <Text style={styles.help}>En iyi skor, koşu geçmişi ve altınlar silinir</Text>
             </View>
             <Ionicons name="trash-outline" size={22} color={colors.error} />
           </Pressable>
@@ -259,10 +253,10 @@ export default function SettingsScreen() {
         <Text style={styles.section}>Kontroller</Text>
         <View style={styles.card}>
           {[
-            ["arrow-back", "Sola kaydır", "Sol şerit"],
-            ["arrow-forward", "Sağa kaydır", "Sağ şerit"],
-            ["arrow-up", "Yukarı kaydır", "Zıpla"],
-            ["arrow-down", "Aşağı kaydır", "Eğil"],
+            ["arrow-back", "Sola kaydır", "Sol şeride geç"],
+            ["arrow-forward", "Sağa kaydır", "Sağ şeride geç"],
+            ["arrow-up", "Yukarı kaydır", "Bariyer ve arabaların üstünden zıpla"],
+            ["arrow-down", "Aşağı kaydır", "Tabelaların altından eğil"],
           ].map(([icon, t, d]) => (
             <View key={t} style={styles.ctrl}>
               <View style={styles.ctrlIcon}>
@@ -274,6 +268,7 @@ export default function SettingsScreen() {
               </View>
             </View>
           ))}
+          <Text style={styles.help}>Tramvay ve sütunlar şeridi tamamen kapatır, şerit değiştir.</Text>
         </View>
       </KeyboardAwareScrollView>
     </View>
