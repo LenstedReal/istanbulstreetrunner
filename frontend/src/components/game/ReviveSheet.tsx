@@ -47,10 +47,9 @@ export function ReviveSheet({ score, cost, keys, revivesLeft, adsAvailable, busy
       <View style={styles.costRow} testID="revive-cost">
         <Ionicons name="key" size={20} color={colors.brandTertiaryShade} />
         <Text style={styles.costText}>
-          {cost} anahtar gerekli · sende {keys}
+          {cost} anahtar · sende {keys}
         </Text>
       </View>
-      <Text style={styles.hint}>Bu koşuda {revivesLeft} canlanma hakkın kaldı</Text>
       <ChunkyButton
         testID="revive-keys-button"
         label={canPay ? `Anahtarla devam (${cost})` : `Yetersiz anahtar (${cost})`}

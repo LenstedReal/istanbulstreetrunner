@@ -51,7 +51,7 @@ export function MainMenu({ nickname, bestScore, totalCoins, keys, adBusy, onPlay
           <ChunkyButton testID="menu-leaderboard-button" icon="podium" round size="lg" variant="secondary" onPress={onLeaderboard} />
           <ChunkyButton testID="menu-settings-button" icon="settings-sharp" round size="lg" variant="neutral" onPress={onSettings} />
         </View>
-        <Text style={styles.hint}>Kaydırarak şerit değiştir, zıpla, eğil</Text>
+        <Text style={styles.hint}>İstanbul temalı semtlerde doyasıya koş</Text>
       </Animated.View>
     </View>
   );

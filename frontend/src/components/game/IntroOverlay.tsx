@@ -18,7 +18,7 @@ import { fonts, radius, spacing } from "@/src/tokens";
 
 const MIN_MS = 3000; // never shorter than 3 s
 const MAX_MS = 7000; // never longer than 7 s, even on a slow device
-const TIPS = ["Sola / sağa kaydır: şerit değiştir", "Yukarı kaydır: zıpla", "Aşağı kaydır: tabelaların altından eğil", "Mıknatıs altınları çeker, kalkan bir çarpmayı affeder"];
+const TIPS = ["Koşucu yükleniyor…", "Nesneler yükleniyor…", "Hazırlanıyor…"];
 
 interface Props {
   ready: boolean;

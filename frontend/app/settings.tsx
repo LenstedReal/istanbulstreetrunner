@@ -118,7 +118,7 @@ export default function SettingsScreen() {
             </View>
             <View style={styles.rowText}>
               <Text style={styles.rowTitle}>{profile.adFree ? "Üyelik aktif" : "Aylık üyelik · 199 ₺"}</Text>
-              <Text style={styles.help}>Geçiş reklamı yok, sınırsız parça değişimi, ilk abonelikte 50 anahtar hoş geldin paketi. Canlanma yine anahtarla yapılır.</Text>
+              <Text style={styles.help}>Reklam yok · Sınırsız müzik değişimi · 50 anahtar (hoş geldin paketi)</Text>
             </View>
           </View>
           <ChunkyButton
@@ -140,7 +140,7 @@ export default function SettingsScreen() {
           <View style={styles.rowItem}>
             <View style={styles.rowText}>
               <Text style={styles.rowTitle}>Ses efektleri</Text>
-              <Text style={styles.help}>Zıplama, altın ve çarpma sesleri</Text>
+              
             </View>
             <Switch testID="settings-sound-switch" value={profile.sound} onValueChange={(v) => profile.setSound(v)} trackColor={{ true: colors.info, false: colors.border }} thumbColor={colors.surfaceSecondary} />
           </View>
@@ -148,7 +148,7 @@ export default function SettingsScreen() {
           <View style={styles.rowItem}>
             <View style={styles.rowText}>
               <Text style={styles.rowTitle}>Müzik</Text>
-              <Text style={styles.help}>NCS parçaları, kesintisiz döngü</Text>
+              
             </View>
             <Switch testID="settings-music-switch" value={profile.music} onValueChange={(v) => profile.setMusic(v)} trackColor={{ true: colors.info, false: colors.border }} thumbColor={colors.surfaceSecondary} />
           </View>
@@ -184,7 +184,7 @@ export default function SettingsScreen() {
             </Text>
           ) : null}
           <Text style={styles.help} testID="settings-music-credits">
-            Müzikler NoCopyrightSounds (ncs.io) yayınlarıdır. Parça: {MUSIC_TRACKS.map((t) => `${t.artist} – ${t.title}`).join(" · ")}. Mağaza yayını öncesi NCS kullanım politikasını kontrol edin.
+            Müzikler NoCopyrightSounds (ncs.io) yayınlarıdır.
           </Text>
         </View>
 
@@ -193,7 +193,7 @@ export default function SettingsScreen() {
           <View style={styles.rowItem}>
             <View style={styles.rowText}>
               <Text style={styles.rowTitle}>Gölgeler</Text>
-              <Text style={styles.help}>Daha gerçekçi görünüm; eski cihazlarda kapatın</Text>
+              <Text style={styles.help}>Eski cihazlarda kapatın</Text>
             </View>
             <Switch testID="settings-shadows-switch" value={profile.shadows} onValueChange={(v) => profile.setShadows(v)} trackColor={{ true: colors.info, false: colors.border }} thumbColor={colors.surfaceSecondary} />
           </View>
@@ -201,7 +201,7 @@ export default function SettingsScreen() {
           <View style={styles.rowItem}>
             <View style={styles.rowText}>
               <Text style={styles.rowTitle}>Titreşim</Text>
-              <Text style={styles.help}>Şerit değişimi, altın ve çarpmalarda</Text>
+              
             </View>
             <Switch
               testID="settings-haptics-switch"
@@ -223,7 +223,7 @@ export default function SettingsScreen() {
           >
             <View style={styles.rowText}>
               <Text style={styles.rowTitle}>Titreşimi dene</Text>
-              <Text style={styles.help}>Cihaz titremiyorsa sistem ayarlarından dokunsal geri bildirimi açın</Text>
+              
             </View>
             <Ionicons name="phone-portrait-outline" size={22} color={colors.info} />
           </Pressable>
@@ -231,7 +231,7 @@ export default function SettingsScreen() {
           <Pressable testID="settings-reset-tutorial-button" accessibilityRole="button" onPress={() => profile.resetTutorial()} style={styles.rowItem}>
             <View style={styles.rowText}>
               <Text style={styles.rowTitle}>Öğreticiyi tekrar göster</Text>
-              <Text style={styles.help}>{profile.tutorialSeen ? "Bir sonraki koşuda ipuçları görünür" : "Ipuçları bir sonraki koşuda gösterilecek"}</Text>
+              
             </View>
             <Ionicons name="refresh" size={22} color={colors.info} />
           </Pressable>
@@ -250,7 +250,7 @@ export default function SettingsScreen() {
           >
             <View style={styles.rowText}>
               <Text style={[styles.rowTitle, { color: colors.error }]}>{confirmReset ? "Emin misin? Tekrar dokun" : "Yerel skorları sıfırla"}</Text>
-              <Text style={styles.help}>Cihazdaki koşu geçmişi, en iyi skor ve altınlar silinir</Text>
+              
             </View>
             <Ionicons name="trash-outline" size={22} color={colors.error} />
           </Pressable>
@@ -259,10 +259,10 @@ export default function SettingsScreen() {
         <Text style={styles.section}>Kontroller</Text>
         <View style={styles.card}>
           {[
-            ["arrow-back", "Sola kaydır", "Sol şeride geç"],
-            ["arrow-forward", "Sağa kaydır", "Sağ şeride geç"],
-            ["arrow-up", "Yukarı kaydır", "Simit arabası ve bariyerlerin üstünden zıpla"],
-            ["arrow-down", "Aşağı kaydır", "Tabelaların altından eğilerek geç"],
+            ["arrow-back", "Sola kaydır", "Sol şerit"],
+            ["arrow-forward", "Sağa kaydır", "Sağ şerit"],
+            ["arrow-up", "Yukarı kaydır", "Zıpla"],
+            ["arrow-down", "Aşağı kaydır", "Eğil"],
           ].map(([icon, t, d]) => (
             <View key={t} style={styles.ctrl}>
               <View style={styles.ctrlIcon}>
@@ -274,7 +274,6 @@ export default function SettingsScreen() {
               </View>
             </View>
           ))}
-          <Text style={styles.help}>Tramvaylar ve taş sütunlar şeridi tamamen kapatır — kaç!</Text>
         </View>
       </KeyboardAwareScrollView>
     </View>
