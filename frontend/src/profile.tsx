@@ -25,6 +25,10 @@ interface ProfileState {
   shadows: boolean;
   musicTrack: string;
   tutorialSeen: boolean;
+  keys: number;
+  playsSinceAd: number;
+  songChanges: number;
+  adFree: boolean;
 }
 
 interface ProfileApi extends ProfileState {
@@ -40,6 +44,12 @@ interface ProfileApi extends ProfileState {
   resetLocalData: () => Promise<void>;
   ensureOnline: () => Promise<string | null>;
   recoverOnline: () => Promise<string | null>;
+  addKeys: (n: number) => Promise<void>;
+  spendKeys: (n: number) => Promise<boolean>;
+  /** Increments the play counter; returns true when an interstitial is due (every 3rd play). */
+  registerPlay: () => Promise<boolean>;
+  registerSongChange: () => Promise<void>;
+  setAdFree: (v: boolean) => Promise<void>;
 }
 
 const KEYS = {
@@ -55,7 +65,19 @@ const KEYS = {
   shadows: "shadows_enabled",
   musicTrack: "music_track",
   tutorialSeen: "tutorial_seen",
+  keys: "keys",
+  playsSinceAd: "plays_since_ad",
+  songChanges: "song_changes",
+  adFree: "ad_free",
+  welcomePack: "welcome_pack_granted",
 };
+
+export const INTERSTITIAL_EVERY = 3;
+export const MAX_REVIVES = 5;
+export const KEYS_PER_AD = 1;
+export const WELCOME_KEYS = 50;
+/** Subway Surfers style: 1, 2, 4, 8, 16 keys for successive revives in one run. */
+export const reviveCost = (revivesUsed: number) => Math.pow(2, revivesUsed);
 
 const randomNickname = () => `Koşucu${Math.floor(1000 + Math.random() * 9000)}`;
 
@@ -76,6 +98,10 @@ export function ProfileProvider({ children }: { children: React.ReactNode }) {
     shadows: true,
     musicTrack: DEFAULT_TRACK,
     tutorialSeen: false,
+    keys: 0,
+    playsSinceAd: 0,
+    songChanges: 0,
+    adFree: false,
   });
   const stateRef = useRef(state);
   stateRef.current = state;
@@ -83,20 +109,25 @@ export function ProfileProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     (async () => {
-      const [playerId, friendCode, nickname, bestScore, totalCoins, scoresRaw, haptics, tutorialSeen, sound, music, shadows, musicTrack] = await Promise.all([
-        storage.getItem<string | null>(KEYS.playerId, null),
-        storage.getItem<string | null>(KEYS.friendCode, null),
-        storage.getItem<string>(KEYS.nickname, ""),
-        storage.getItem<number>(KEYS.bestScore, 0),
-        storage.getItem<number>(KEYS.totalCoins, 0),
-        storage.getItem<string>(KEYS.localScores, "[]"),
-        storage.getItem<boolean>(KEYS.haptics, true),
-        storage.getItem<boolean>(KEYS.tutorialSeen, false),
-        storage.getItem<boolean>(KEYS.sound, true),
-        storage.getItem<boolean>(KEYS.music, true),
-        storage.getItem<boolean>(KEYS.shadows, true),
-        storage.getItem<string>(KEYS.musicTrack, DEFAULT_TRACK),
-      ]);
+      const [playerId, friendCode, nickname, bestScore, totalCoins, scoresRaw, haptics, tutorialSeen, sound, music, shadows, musicTrack, keys, playsSinceAd, songChanges, adFree] =
+        await Promise.all([
+          storage.getItem<string | null>(KEYS.playerId, null),
+          storage.getItem<string | null>(KEYS.friendCode, null),
+          storage.getItem<string>(KEYS.nickname, ""),
+          storage.getItem<number>(KEYS.bestScore, 0),
+          storage.getItem<number>(KEYS.totalCoins, 0),
+          storage.getItem<string>(KEYS.localScores, "[]"),
+          storage.getItem<boolean>(KEYS.haptics, true),
+          storage.getItem<boolean>(KEYS.tutorialSeen, false),
+          storage.getItem<boolean>(KEYS.sound, true),
+          storage.getItem<boolean>(KEYS.music, true),
+          storage.getItem<boolean>(KEYS.shadows, true),
+          storage.getItem<string>(KEYS.musicTrack, DEFAULT_TRACK),
+          storage.getItem<number>(KEYS.keys, 0),
+          storage.getItem<number>(KEYS.playsSinceAd, 0),
+          storage.getItem<number>(KEYS.songChanges, 0),
+          storage.getItem<boolean>(KEYS.adFree, false),
+        ]);
       let localScores: LocalScore[] = [];
       try {
         localScores = JSON.parse(scoresRaw ?? "[]");
@@ -119,6 +150,10 @@ export function ProfileProvider({ children }: { children: React.ReactNode }) {
         shadows: shadows ?? true,
         musicTrack: musicTrack ?? DEFAULT_TRACK,
         tutorialSeen: tutorialSeen ?? false,
+        keys: keys ?? 0,
+        playsSinceAd: playsSinceAd ?? 0,
+        songChanges: songChanges ?? 0,
+        adFree: adFree ?? false,
       });
     })();
   }, []);
@@ -238,9 +273,74 @@ export function ProfileProvider({ children }: { children: React.ReactNode }) {
     await Promise.all([storage.setItem(KEYS.bestScore, 0), storage.setItem(KEYS.totalCoins, 0), storage.setItem(KEYS.localScores, "[]")]);
   }, []);
 
+  const addKeys = useCallback(async (n: number) => {
+    const keys = Math.max(0, stateRef.current.keys + n);
+    stateRef.current = { ...stateRef.current, keys };
+    setState((prev) => ({ ...prev, keys }));
+    await storage.setItem(KEYS.keys, keys);
+  }, []);
+
+  const spendKeys = useCallback(
+    async (n: number) => {
+      if (stateRef.current.keys < n) return false;
+      await addKeys(-n);
+      return true;
+    },
+    [addKeys],
+  );
+
+  const registerPlay = useCallback(async () => {
+    const plays = stateRef.current.playsSinceAd + 1;
+    const due = plays >= INTERSTITIAL_EVERY;
+    const next = due ? 0 : plays;
+    stateRef.current = { ...stateRef.current, playsSinceAd: next };
+    setState((prev) => ({ ...prev, playsSinceAd: next }));
+    await storage.setItem(KEYS.playsSinceAd, next);
+    return due;
+  }, []);
+
+  const registerSongChange = useCallback(async () => {
+    const songChanges = stateRef.current.songChanges + 1;
+    stateRef.current = { ...stateRef.current, songChanges };
+    setState((prev) => ({ ...prev, songChanges }));
+    await storage.setItem(KEYS.songChanges, songChanges);
+  }, []);
+
+  const setAdFree = useCallback(
+    async (v: boolean) => {
+      setState((prev) => ({ ...prev, adFree: v }));
+      await storage.setItem(KEYS.adFree, v);
+      // One-time welcome pack with the first subscription.
+      if (v && !(await storage.getItem<boolean>(KEYS.welcomePack, false))) {
+        await storage.setItem(KEYS.welcomePack, true);
+        await addKeys(WELCOME_KEYS);
+      }
+    },
+    [addKeys],
+  );
+
   const value = useMemo<ProfileApi>(
-    () => ({ ...state, recordRun, setNickname, setHaptics, setSound, setMusic, setShadows, setMusicTrack, markTutorialSeen, resetTutorial, resetLocalData, ensureOnline, recoverOnline }),
-    [state, recordRun, setNickname, setHaptics, setSound, setMusic, setShadows, setMusicTrack, markTutorialSeen, resetTutorial, resetLocalData, ensureOnline, recoverOnline],
+    () => ({
+      ...state,
+      recordRun,
+      setNickname,
+      setHaptics,
+      setSound,
+      setMusic,
+      setShadows,
+      setMusicTrack,
+      markTutorialSeen,
+      resetTutorial,
+      resetLocalData,
+      ensureOnline,
+      recoverOnline,
+      addKeys,
+      spendKeys,
+      registerPlay,
+      registerSongChange,
+      setAdFree,
+    }),
+    [state, recordRun, setNickname, setHaptics, setSound, setMusic, setShadows, setMusicTrack, markTutorialSeen, resetTutorial, resetLocalData, ensureOnline, recoverOnline, addKeys, spendKeys, registerPlay, registerSongChange, setAdFree],
   );
 
   return <ProfileContext.Provider value={value}>{children}</ProfileContext.Provider>;

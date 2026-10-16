@@ -30,11 +30,12 @@ import { Runner } from "./runner";
 import { CityWorld } from "./world";
 
 export type GameInput = "left" | "right" | "jump" | "roll";
-export type GameEvent = "lane" | "jump" | "roll" | "coin" | "powerup" | "shield-break" | "crash";
+export type GameEvent = "lane" | "jump" | "roll" | "coin" | "key" | "powerup" | "shield-break" | "crash";
 
 export interface HudState {
   score: number;
   coins: number;
+  keys: number;
   multiplier: number;
   distance: number;
   speedKmh: number;
@@ -50,11 +51,13 @@ export interface RunResult {
 
 export interface EngineCallbacks {
   onHud: (s: HudState) => void;
+  /** Player crashed; the UI decides between revive (keys / ad) and endRun(). */
+  onCrash: (r: RunResult) => void;
   onGameOver: (r: RunResult) => void;
   onEvent: (e: GameEvent) => void;
 }
 
-type Phase = "idle" | "running" | "paused" | "crashing" | "over";
+type Phase = "idle" | "running" | "paused" | "crashing" | "crashed" | "over";
 
 interface Obstacle {
   def: ObstacleDef;
@@ -116,6 +119,7 @@ export class RunnerEngine {
   private rolling = false;
   private rollT = 0;
   private crashT = 0;
+  private invulnerable = 0;
   private shake = 0;
   private shield = false;
   private powerup: { kind: "magnet" | "x2"; remaining: number; total: number } | null = null;
@@ -124,6 +128,11 @@ export class RunnerEngine {
   private obstacles: Obstacle[] = [];
   private coinList: Coin[] = [];
   private powerups: Powerup[] = [];
+  private keyItems: Powerup[] = [];
+  private runKeys = 0;
+  /** Distance at which the next key is scheduled; roughly one every ~2 km with variance. */
+  private nextKeyAt = rand(1200, 2200);
+  private keyPending = false;
   private pool = new Map<string, THREE.Object3D[]>();
 
   constructor(
@@ -219,6 +228,40 @@ export class RunnerEngine {
     return this.phase === "running";
   }
 
+  private result(): RunResult {
+    return { score: Math.floor(this.score), coins: this.coins, distance: Math.floor(this.distance) };
+  }
+
+  /** Called by the UI after a crash when the player declines / cannot revive. */
+  endRun() {
+    if (this.phase !== "crashed" && this.phase !== "crashing") return;
+    this.phase = "over";
+    this.cb.onGameOver(this.result());
+  }
+
+  /** Subway Surfers style revive: clear the road ahead, stand the runner up, short invulnerability. */
+  revive() {
+    if (this.phase !== "crashed") return;
+    const limit = this.pz - 28;
+    this.obstacles = this.obstacles.filter((o) => {
+      if (o.z + o.def.halfD > limit) {
+        this.release(o.def.kind, o.group);
+        return false;
+      }
+      return true;
+    });
+    this.py = 0;
+    this.vy = 0;
+    this.jumping = false;
+    this.rolling = false;
+    this.crashT = 0;
+    this.shake = 0;
+    this.invulnerable = 2.0;
+    this.speed = Math.max(START_SPEED, this.speed * 0.8);
+    this.phase = "running";
+    this.emitHud();
+  }
+
   /** Shadows are the most expensive effect; low-end devices can switch them off. */
   setShadows(on: boolean) {
     if (this.renderer.shadowMap.enabled === on) return;
@@ -276,9 +319,14 @@ export class RunnerEngine {
     for (const o of this.obstacles) this.release(o.def.kind, o.group);
     for (const c of this.coinList) this.release("coin", c.mesh);
     for (const p of this.powerups) this.release(p.kind, p.group);
+    for (const k of this.keyItems) this.release("key", k.group);
     this.obstacles = [];
     this.coinList = [];
     this.powerups = [];
+    this.keyItems = [];
+    this.runKeys = 0;
+    this.nextKeyAt = rand(1200, 2200);
+    this.keyPending = false;
     this.elapsed = 0;
     this.speed = START_SPEED;
     this.distance = 0;
@@ -293,6 +341,7 @@ export class RunnerEngine {
     this.rolling = false;
     this.rollT = 0;
     this.crashT = 0;
+    this.invulnerable = 0;
     this.shake = 0;
     this.shield = false;
     this.powerup = null;
@@ -316,17 +365,19 @@ export class RunnerEngine {
     else if (this.phase === "crashing") {
       this.crashT += dt;
       if (this.crashT >= CRASH_DELAY) {
-        this.phase = "over";
-        this.cb.onGameOver({ score: Math.floor(this.score), coins: this.coins, distance: Math.floor(this.distance) });
+        this.phase = "crashed";
+        this.cb.onCrash(this.result());
       }
     }
+    if (this.invulnerable > 0) this.invulnerable -= dt;
+    this.runner.group.visible = this.invulnerable <= 0 || Math.floor(this.clock * 12) % 2 === 0;
 
     this.animateCollectibles(dt);
     this.runner.animate(this.clock, this.speed / START_SPEED, {
       jumping: this.jumping,
       rolling: this.rolling,
       rollT: this.rollT / ROLL_TIME,
-      crashed: this.phase === "crashing" || this.phase === "over",
+      crashed: this.phase === "crashing" || this.phase === "crashed" || this.phase === "over",
       crashT: this.crashT,
       idle: this.phase === "idle",
     });
@@ -378,6 +429,7 @@ export class RunnerEngine {
     this.despawnBehind();
     this.collectCoins(dt);
     this.collectPowerups();
+    this.collectKeys();
     this.checkCollisions();
 
     this.hudAcc += dt;
@@ -391,6 +443,7 @@ export class RunnerEngine {
     this.cb.onHud({
       score: Math.floor(this.score),
       coins: this.coins,
+      keys: this.runKeys,
       multiplier: this.powerup?.kind === "x2" ? 2 : 1,
       distance: Math.floor(this.distance),
       speedKmh: Math.round(this.speed * 3.6),
@@ -475,6 +528,13 @@ export class RunnerEngine {
       }
       return true;
     });
+    this.keyItems = this.keyItems.filter((k) => {
+      if (k.group.position.z > limit) {
+        this.release("key", k.group);
+        return false;
+      }
+      return true;
+    });
   }
 
   private spawnRow(z: number) {
@@ -520,6 +580,18 @@ export class RunnerEngine {
       const kinds: PowerupKind[] = this.shield ? ["magnet", "x2"] : ["magnet", "x2", "shield"];
       this.placePowerup(kinds[randi(0, kinds.length - 1)], freeLane, z - 9);
     }
+    if (this.distance >= this.nextKeyAt) this.keyPending = true;
+    if (this.keyPending) {
+      this.keyPending = false;
+      this.nextKeyAt = this.distance + rand(1500, 2500);
+      this.placeKey(freeLane, z + 22);
+    }
+  }
+
+  private placeKey(lane: number, z: number) {
+    const group = this.acquire("key", () => this.factory.makeKey()) as THREE.Group;
+    group.position.set(lane * LANE_W, 1.2, z);
+    this.keyItems.push({ kind: "shield", group, baseY: 1.2, phase: Math.random() * 6 });
   }
 
   private coinLine(lane: number, rowZ: number, y = 0.65) {
@@ -579,6 +651,25 @@ export class RunnerEngine {
       p.group.rotation.y += dt * 2;
       p.group.position.y = p.baseY + Math.sin(p.phase) * 0.15;
     }
+    for (const k of this.keyItems) {
+      k.phase += dt * 2.5;
+      k.group.rotation.y += dt * 2.6;
+      k.group.position.y = k.baseY + Math.sin(k.phase) * 0.15;
+    }
+  }
+
+  private collectKeys() {
+    this.keyItems = this.keyItems.filter((k) => {
+      const pos = k.group.position;
+      if (Math.abs(pos.z - this.pz) < 1.0 && Math.abs(pos.x - this.px) < 1.0 && pos.y < this.py + PLAYER_H + 0.6 && pos.y > this.py - 0.5) {
+        this.runKeys++;
+        this.cb.onEvent("key");
+        this.release("key", k.group);
+        this.emitHud();
+        return false;
+      }
+      return true;
+    });
   }
 
   private collectCoins(dt: number) {
@@ -625,6 +716,7 @@ export class RunnerEngine {
 
   // -------------------------------------------------------------- collisions
   private checkCollisions() {
+    if (this.invulnerable > 0) return;
     const ph = this.rolling ? ROLL_H : PLAYER_H;
     const top = this.py + ph;
     for (let i = 0; i < this.obstacles.length; i++) {

@@ -3,6 +3,7 @@ import React from "react";
 import { Pressable, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+import { CoinIcon } from "@/src/components/CoinIcon";
 import { StatPill } from "@/src/components/StatPill";
 import type { HudState } from "@/src/game/engine";
 import { makeStyles, useTheme } from "@/src/theme";
@@ -31,7 +32,8 @@ export function Hud({ hud, onPause }: Props) {
           <Pressable testID="hud-pause-button" accessibilityRole="button" onPress={onPause} style={[styles.pause, { backgroundColor: colors.surfaceSecondary, borderColor: colors.borderStrong }]}>
             <Ionicons name="pause" size={24} color={colors.onSurfaceSecondary} />
           </Pressable>
-          <StatPill testID="hud-coins" tone="gold" icon="ellipse" iconColor={colors.brandTertiaryShade} value={hud.coins} />
+          <StatPill testID="hud-coins" tone="dark" leading={<CoinIcon size={20} />} value={hud.coins} />
+          {hud.keys > 0 ? <StatPill testID="hud-keys" tone="light" icon="key" iconColor={colors.brandTertiaryShade} value={hud.keys} /> : null}
         </View>
       </View>
 

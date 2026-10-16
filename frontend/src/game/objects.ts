@@ -29,8 +29,9 @@ export class ObjectFactory {
   readonly box = new THREE.BoxGeometry(1, 1, 1);
   readonly cyl = new THREE.CylinderGeometry(1, 1, 1, 12);
   readonly sphere = new THREE.SphereGeometry(1, 12, 10);
-  readonly coinGeo = new THREE.CylinderGeometry(0.38, 0.38, 0.1, 18);
-  readonly coinRimGeo = new THREE.TorusGeometry(0.36, 0.045, 6, 24).rotateX(Math.PI / 2);
+  readonly coinGeo = new THREE.CylinderGeometry(0.4, 0.4, 0.14, 24);
+  readonly coinRimGeo = new THREE.TorusGeometry(0.38, 0.055, 8, 28).rotateX(Math.PI / 2);
+  readonly keyRingGeo = new THREE.TorusGeometry(0.2, 0.06, 8, 20);
   readonly torus = new THREE.TorusGeometry(0.16, 0.06, 6, 12);
   readonly octa = new THREE.OctahedronGeometry(0.42, 0);
   readonly ico = new THREE.IcosahedronGeometry(0.42, 0);
@@ -53,8 +54,9 @@ export class ObjectFactory {
     stoneDark: lambert(SCENE.stoneDark),
     lampGlow: lambert(SCENE.lampGlow, { emissive: SCENE.lampGlow, emissiveIntensity: 0.9 }),
     dome: lambert(SCENE.dome),
-    coin: lambert(SCENE.coin, { emissive: 0x8a6210, emissiveIntensity: 0.6 }),
-    coinEdge: lambert(SCENE.coinEdge, { emissive: 0x5a3a08, emissiveIntensity: 0.5 }),
+    coin: lambert(0xffd54a, { emissive: 0xa86f08, emissiveIntensity: 0.75 }),
+    coinEdge: lambert(0xc9951f, { emissive: 0x6a4406, emissiveIntensity: 0.6 }),
+    key: lambert(0xffc233, { emissive: 0x9a6a00, emissiveIntensity: 0.8 }),
     magnet: lambert(SCENE.magnet),
     magnetTip: lambert(SCENE.magnetTip),
     shield: new THREE.MeshLambertMaterial({ color: SCENE.shield, transparent: true, opacity: 0.75, emissive: 0x005566 }),
@@ -210,7 +212,34 @@ export class ObjectFactory {
     c.castShadow = true;
     const rim = new THREE.Mesh(this.coinRimGeo, this.mats.coinEdge);
     c.add(rim);
+    // Embossed centre on both faces so the coin reads as a coin, not a disc.
+    for (const y of [0.08, -0.08]) {
+      const emblem = new THREE.Mesh(this.cyl, this.mats.coinEdge);
+      emblem.scale.set(0.2, 0.03, 0.2);
+      emblem.position.y = y;
+      c.add(emblem);
+    }
     return c;
+  }
+
+  /** Golden key collectible (revive currency). Stands upright, spins around Y. */
+  makeKey(): THREE.Group {
+    const g = new THREE.Group();
+    const m = this.mats.key;
+    const head = new THREE.Mesh(this.keyRingGeo, m);
+    head.position.y = 0.45;
+    g.add(head);
+    g.add(this.part(m, 0.1, 0.55, 0.1, 0, -0.3));
+    g.add(this.part(m, 0.22, 0.09, 0.1, 0.1, -0.3));
+    g.add(this.part(m, 0.16, 0.09, 0.1, 0.07, -0.14));
+    const glow = new THREE.Mesh(this.sphere, this.mats.glow);
+    glow.scale.set(0.55, 0.8, 0.55);
+    glow.position.y = 0.1;
+    g.add(glow);
+    g.traverse((c) => {
+      if ((c as THREE.Mesh).isMesh) c.castShadow = true;
+    });
+    return g;
   }
 
   makePowerup(kind: PowerupKind): THREE.Group {

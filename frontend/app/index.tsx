@@ -5,22 +5,24 @@ import React, { useCallback, useEffect, useRef, useState } from "react";
 import { Platform, StyleSheet, Text, View } from "react-native";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
 
+import { ads } from "@/src/ads/ads";
+import { audio } from "@/src/audio";
 import { ChunkyButton } from "@/src/components/ChunkyButton";
 import { GameOverSheet } from "@/src/components/game/GameOverSheet";
 import { Hud } from "@/src/components/game/Hud";
 import { IntroOverlay } from "@/src/components/game/IntroOverlay";
 import { MainMenu } from "@/src/components/game/MainMenu";
+import { ReviveSheet } from "@/src/components/game/ReviveSheet";
 import { Sheet, SheetActions } from "@/src/components/game/Sheet";
 import { TutorialOverlay } from "@/src/components/game/TutorialOverlay";
-import { audio } from "@/src/audio";
 import { EngineCallbacks, GameEvent, GameInput, HudState, RunResult, RunnerEngine } from "@/src/game/engine";
-import { useProfile } from "@/src/profile";
+import { MAX_REVIVES, reviveCost, useProfile } from "@/src/profile";
 import { makeStyles } from "@/src/theme";
 import { fonts, spacing } from "@/src/tokens";
 
-type Mode = "menu" | "playing" | "paused" | "gameover";
+type Mode = "menu" | "playing" | "paused" | "crashed" | "gameover";
 
-const EMPTY_HUD: HudState = { score: 0, coins: 0, multiplier: 1, distance: 0, speedKmh: 0, powerup: null, shield: false };
+const EMPTY_HUD: HudState = { score: 0, coins: 0, keys: 0, multiplier: 1, distance: 0, speedKmh: 0, powerup: null, shield: false };
 const SWIPE_PX = 26;
 
 export default function GameScreen() {
@@ -35,12 +37,19 @@ export default function GameScreen() {
   const [showTutorial, setShowTutorial] = useState(false);
   const [glReady, setGlReady] = useState(false);
   const [introDone, setIntroDone] = useState(false);
+  const [revives, setRevives] = useState(0);
+  const [adBusy, setAdBusy] = useState(false);
 
   const engineRef = useRef<RunnerEngine | null>(null);
   const modeRef = useRef<Mode>("menu");
   modeRef.current = mode;
   const profileRef = useRef(profile);
   profileRef.current = profile;
+  const revivesRef = useRef(0);
+
+  useEffect(() => {
+    void ads.initialize();
+  }, []);
 
   // Audio: load players once, follow settings.
   useEffect(() => {
@@ -59,9 +68,16 @@ export default function GameScreen() {
   // Callbacks object is mutable so the engine always sees the latest closures.
   const callbacks = useRef<EngineCallbacks>({
     onHud: (s) => setHud(s),
+    onCrash: (r) => {
+      setResult(r);
+      audio.pauseMusic();
+      // Out of revives for this run -> straight to the result sheet.
+      if (revivesRef.current >= MAX_REVIVES) engineRef.current?.endRun();
+      else setMode("crashed");
+    },
     onGameOver: async (r) => {
       setResult(r);
-      audio.duckMusic();
+      audio.pauseMusic();
       const { isRecord: rec } = await profileRef.current.recordRun(r);
       setIsRecord(rec);
       if (rec && profileRef.current.haptics) {
@@ -70,11 +86,12 @@ export default function GameScreen() {
       setMode("gameover");
     },
     onEvent: (e: GameEvent) => {
-      const sfx = { crash: "crash", coin: "coin", jump: "jump", roll: "roll", lane: "swipe", powerup: "powerup", "shield-break": "shield" } as const;
+      const sfx = { crash: "crash", coin: "coin", key: "powerup", jump: "jump", roll: "roll", lane: "swipe", powerup: "powerup", "shield-break": "shield" } as const;
       audio.play(sfx[e]);
+      if (e === "key") void profileRef.current.addKeys(1);
       if (!profileRef.current.haptics) return;
       if (e === "crash") Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error).catch(() => undefined);
-      else if (e === "powerup" || e === "shield-break") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => undefined);
+      else if (e === "powerup" || e === "shield-break" || e === "key") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => undefined);
       else Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => undefined);
     },
   });
@@ -88,17 +105,65 @@ export default function GameScreen() {
 
   useEffect(() => () => engineRef.current?.dispose(), []);
 
-  const startRun = useCallback(() => {
+  const beginRun = useCallback(() => {
     const engine = engineRef.current;
     if (!engine) return;
     setHud(EMPTY_HUD);
     setResult(null);
     setIsRecord(false);
+    revivesRef.current = 0;
+    setRevives(0);
     setShowTutorial(!profileRef.current.tutorialSeen);
     engine.start();
     setMode("playing");
     audio.startMusic();
     if (profileRef.current.haptics) Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => undefined);
+  }, []);
+
+  /** Oyna: every 3rd play shows an interstitial first (skipped for ad-free members). */
+  const startRun = useCallback(async () => {
+    if (adBusy) return;
+    const due = await profileRef.current.registerPlay();
+    if (due && !profileRef.current.adFree && ads.available) {
+      setAdBusy(true);
+      try {
+        await ads.showInterstitial();
+      } finally {
+        setAdBusy(false);
+      }
+    }
+    beginRun();
+  }, [adBusy, beginRun]);
+
+  const reviveNow = useCallback(() => {
+    revivesRef.current += 1;
+    setRevives(revivesRef.current);
+    engineRef.current?.revive();
+    audio.startMusic();
+    setMode("playing");
+  }, []);
+
+  const reviveWithKeys = useCallback(async () => {
+    const ok = await profileRef.current.spendKeys(reviveCost(revivesRef.current));
+    if (ok) reviveNow();
+  }, [reviveNow]);
+
+  const reviveWithAd = useCallback(async () => {
+    setAdBusy(true);
+    try {
+      const earned = await ads.showRewarded();
+      if (earned) {
+        // The ad grants exactly the keys this revive costs, then spends them.
+        await profileRef.current.addKeys(reviveCost(revivesRef.current));
+        await reviveWithKeys();
+      }
+    } finally {
+      setAdBusy(false);
+    }
+  }, [reviveWithKeys]);
+
+  const giveUp = useCallback(() => {
+    engineRef.current?.endRun();
   }, []);
 
   const goHome = useCallback(() => {
@@ -216,6 +281,8 @@ export default function GameScreen() {
           nickname={profile.nickname}
           bestScore={profile.bestScore}
           totalCoins={profile.totalCoins}
+          keys={profile.keys}
+          adBusy={adBusy}
           onPlay={startRun}
           onLeaderboard={() => router.push("/leaderboard")}
           onSettings={() => router.push("/settings")}
@@ -228,11 +295,28 @@ export default function GameScreen() {
       {mode === "paused" ? (
         <Sheet title="Duraklatıldı" testID="pause-sheet">
           <Text style={styles.pauseScore}>Skor: {hud.score.toLocaleString("tr-TR")}</Text>
+          <View style={styles.pauseGear}>
+            <ChunkyButton testID="pause-settings-button" icon="settings-sharp" round size="lg" variant="neutral" onPress={() => router.push("/settings")} />
+          </View>
           <SheetActions>
             <ChunkyButton testID="pause-home-button" label="Ana Menü" icon="home" variant="neutral" onPress={goHome} style={styles.flex} />
             <ChunkyButton testID="pause-resume-button" label="Devam" icon="play" variant="primary" onPress={resume} style={styles.flex} />
           </SheetActions>
         </Sheet>
+      ) : null}
+
+      {mode === "crashed" && result ? (
+        <ReviveSheet
+          score={result.score}
+          cost={reviveCost(revives)}
+          keys={profile.keys}
+          revivesLeft={MAX_REVIVES - revives}
+          adsAvailable={ads.available}
+          busy={adBusy}
+          onUseKeys={reviveWithKeys}
+          onWatchAd={reviveWithAd}
+          onGiveUp={giveUp}
+        />
       ) : null}
 
       {mode === "gameover" && result ? (
@@ -248,5 +332,6 @@ export default function GameScreen() {
 const useStyles = makeStyles((colors) => ({
   root: { flex: 1, backgroundColor: colors.surfaceInverse },
   pauseScore: { fontFamily: fonts.textBold, fontSize: 18, color: colors.onSurface, textAlign: "center", marginBottom: spacing.sm },
+  pauseGear: { alignItems: "center" },
   flex: { flex: 1 },
 }));

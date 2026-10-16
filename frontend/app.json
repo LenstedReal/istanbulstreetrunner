@@ -43,7 +43,16 @@
       "expo-web-browser",
       "expo-status-bar",
       "@react-native-vector-icons/ionicons",
-      "expo-audio"
+      "expo-audio",
+      "react-native-google-mobile-ads",
+      [
+        "react-native-google-mobile-ads",
+        {
+          "androidAppId": "ca-app-pub-4558868217074430~6140167741",
+          "iosAppId": "ca-app-pub-3940256099942544~1458002511",
+          "userTrackingUsageDescription": "Size daha uygun reklamlar göstermek için kullanılır"
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true

@@ -6,6 +6,7 @@ import { Pressable, Switch, Text, TextInput, View } from "react-native";
 import { KeyboardAwareScrollView } from "react-native-keyboard-controller";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+import { ads } from "@/src/ads/ads";
 import { audio, MUSIC_TRACKS } from "@/src/audio";
 import { ChunkyButton } from "@/src/components/ChunkyButton";
 import { useProfile } from "@/src/profile";
@@ -29,6 +30,28 @@ export default function SettingsScreen() {
   }, [profile.music, profile.musicTrack]);
 
   const close = () => (router.canGoBack() ? router.back() : router.replace("/"));
+
+  const [adBusy, setAdBusy] = useState(false);
+  const [trackMsg, setTrackMsg] = useState<string | null>(null);
+  const [msgAdFree, setMsgAdFree] = useState<string | null>(null);
+
+  /** First change is free; later changes need a rewarded ad unless the player is ad-free. */
+  const changeTrack = async (id: string) => {
+    if (id === profile.musicTrack) return;
+    const needsAd = !profile.adFree && profile.songChanges >= 1;
+    if (needsAd && ads.available) {
+      setAdBusy(true);
+      const earned = await ads.showRewarded();
+      setAdBusy(false);
+      if (!earned) {
+        setTrackMsg("Reklam tamamlanmadı, parça değişmedi");
+        return;
+      }
+    }
+    setTrackMsg(null);
+    await profile.setMusicTrack(id);
+    await profile.registerSongChange();
+  };
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
   const [confirmReset, setConfirmReset] = useState(false);
@@ -87,6 +110,31 @@ export default function SettingsScreen() {
           </Text>
         </View>
 
+        <Text style={styles.section}>Reklamsız Deneyim</Text>
+        <View style={[styles.card, { borderColor: colors.brandTertiary }]} testID="settings-adfree-card">
+          <View style={styles.rowItem}>
+            <View style={[styles.ctrlIcon, { backgroundColor: colors.brandTertiary }]}>
+              <Ionicons name="star" size={20} color={colors.onBrandTertiary} />
+            </View>
+            <View style={styles.rowText}>
+              <Text style={styles.rowTitle}>{profile.adFree ? "Üyelik aktif" : "Aylık üyelik · 199 ₺"}</Text>
+              <Text style={styles.help}>Geçiş reklamı yok, sınırsız parça değişimi, ilk abonelikte 50 anahtar hoş geldin paketi. Canlanma yine anahtarla yapılır.</Text>
+            </View>
+          </View>
+          <ChunkyButton
+            testID="settings-adfree-button"
+            label={profile.adFree ? "Üyeliği yönet" : "Abone ol · 199 ₺ / ay"}
+            icon="card"
+            variant="gold"
+            onPress={() => setMsgAdFree("Mağaza aboneliği uygulama Google Play'de yayınlandıktan sonra etkinleşir.")}
+          />
+          {msgAdFree ? (
+            <Text testID="settings-adfree-message" style={styles.help}>
+              {msgAdFree}
+            </Text>
+          ) : null}
+        </View>
+
         <Text style={styles.section}>Ses</Text>
         <View style={styles.card}>
           <View style={styles.rowItem}>
@@ -106,6 +154,9 @@ export default function SettingsScreen() {
           </View>
           <View style={styles.divider} />
           <Text style={styles.rowTitle}>Parça seç</Text>
+          <Text style={styles.help}>
+            {profile.adFree ? "Reklamsız üyelik: sınırsız parça değişimi" : profile.songChanges === 0 ? "İlk parça değişimi ücretsiz, sonrakiler kısa bir reklamla" : "Parça değiştirmek için kısa bir reklam izlenir"}
+          </Text>
           {MUSIC_TRACKS.map((t) => {
             const active = t.id === profile.musicTrack;
             return (
@@ -114,7 +165,8 @@ export default function SettingsScreen() {
                 testID={`settings-track-${t.id}`}
                 accessibilityRole="radio"
                 accessibilityState={{ selected: active }}
-                onPress={() => profile.setMusicTrack(t.id)}
+                disabled={adBusy}
+                onPress={() => changeTrack(t.id)}
                 style={[styles.track, { borderColor: active ? colors.info : colors.border, backgroundColor: active ? colors.surfaceTertiary : colors.surfaceSecondary }]}
               >
                 <Ionicons name={active ? "radio-button-on" : "radio-button-off"} size={22} color={active ? colors.info : colors.muted} />
@@ -122,10 +174,15 @@ export default function SettingsScreen() {
                   <Text style={styles.rowTitle}>{t.title}</Text>
                   <Text style={styles.help}>{t.artist}</Text>
                 </View>
-                {active && profile.music ? <Ionicons name="musical-notes" size={18} color={colors.info} /> : null}
+                {active && profile.music ? <Ionicons name="musical-notes" size={18} color={colors.info} /> : !active && !profile.adFree && profile.songChanges > 0 ? <Ionicons name="play-circle-outline" size={18} color={colors.muted} /> : null}
               </Pressable>
             );
           })}
+          {trackMsg ? (
+            <Text testID="settings-track-message" style={styles.msg}>
+              {trackMsg}
+            </Text>
+          ) : null}
           <Text style={styles.help} testID="settings-music-credits">
             Müzikler NoCopyrightSounds (ncs.io) yayınlarıdır. Parça: {MUSIC_TRACKS.map((t) => `${t.artist} – ${t.title}`).join(" · ")}. Mağaza yayını öncesi NCS kullanım politikasını kontrol edin.
           </Text>

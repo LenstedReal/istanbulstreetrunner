@@ -10,6 +10,7 @@ type IconName = React.ComponentProps<typeof Ionicons>["name"];
 interface Props {
   icon?: IconName;
   iconColor?: string;
+  leading?: React.ReactNode;
   value: string | number;
   label?: string;
   tone?: "light" | "dark" | "gold" | "red";
@@ -19,14 +20,14 @@ interface Props {
 }
 
 /** Solid, chunky HUD pill for score / coins / distance. */
-export function StatPill({ icon, iconColor, value, label, tone = "light", size = "sm", testID, style }: Props) {
+export function StatPill({ icon, iconColor, leading, value, label, tone = "light", size = "sm", testID, style }: Props) {
   const styles = useStyles();
   const { colors } = useTheme();
   const bg = { light: colors.surfaceSecondary, dark: colors.surfaceInverse, gold: colors.brandTertiary, red: colors.brandPrimary }[tone];
   const fg = { light: colors.onSurfaceSecondary, dark: colors.onSurfaceInverse, gold: colors.onBrandTertiary, red: colors.onBrandPrimary }[tone];
   return (
     <View testID={testID} style={[styles.pill, { backgroundColor: bg, borderColor: colors.borderStrong }, size === "lg" && styles.pillLg, style]}>
-      {icon ? <Ionicons name={icon} size={size === "lg" ? 22 : 18} color={iconColor ?? fg} /> : null}
+      {leading ?? (icon ? <Ionicons name={icon} size={size === "lg" ? 22 : 18} color={iconColor ?? fg} /> : null)}
       <View>
         {label ? <Text style={[styles.label, { color: fg }]}>{label}</Text> : null}
         <Text style={[styles.value, { color: fg }, size === "lg" && styles.valueLg]} numberOfLines={1}>

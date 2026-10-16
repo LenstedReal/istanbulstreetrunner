@@ -1,0 +1,42 @@
+{
+  "summary": "Iteration 6: AdMob web-fallback + revive/key system + pause→settings + song-change gating + ad-free card. All backend tests pass (17/17). On web, 0 page errors throughout testing — the 'ReferenceError: ads is not defined' is gone; the Expo web preview loads cleanly, main menu renders with menu-keys pill showing 0. Revive flow, 8s auto-countdown, 3× consecutive Oyna retries, pause→settings navigation, settings track-change gating, and ad-free card all behave exactly as spec'd on web.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [],
+    "react_native_issues": []
+  },
+  "test_evidence": {
+    "load": "No page errors; main-menu testID present; menu-keys shows 0; menu-play-button visible.",
+    "revive_sheet": "Appeared on crash with revive-countdown (8→0), revive-cost text 'Icon\\n1 anahtar gerekli · sende 0', revive-keys-button aria-disabled=true label 'Yetersiz anahtar (1)', revive-ad-button aria-disabled=true label 'Reklam izle (yalnızca mağaza sürümünde)'. Vazgeç → game-over-sheet with score + 'Çarptın!'.",
+    "auto_countdown": "Countdown ticked 8→7→5→4→3→2→1 and revive-sheet auto-dismissed to game-over-sheet without any tap.",
+    "interstitial_gating": "3 consecutive Oyna→crash→Tekrar cycles: game-hud appears every time, no hang. 0 page errors over the whole sequence.",
+    "pause_to_settings": "hud-pause-button → pause-sheet → pause-settings-button navigates to /settings (settings-screen visible); settings-close-button returns and pause-sheet is still shown; pause-resume-button continues the run.",
+    "settings_track_gating": "Initial helper text 'İlk parça değişimi ücretsiz...'. After first change on a different track → helper flips to 'Parça değiştirmek için kısa bir reklam izlenir'. Second change on web (ads unavailable) still applies silently; no settings-track-message error shown, no page errors.",
+    "settings_adfree": "settings-adfree-card visible with 'Aylık üyelik · 199 ₺'. settings-adfree-button tap renders settings-adfree-message 'Mağaza aboneliği uygulama Google Play'de yayınlandıktan sonra etkinleşir.'"
+  },
+  "benign_warnings": [
+    "Browser logged 2 'The play() request was interrupted by a call to pause()' errors on /settings — a non-fatal HTMLMediaElement promise warning from the music-preview useEffect toggling. Does not affect UX; optional swallow in audio.startMusic()/pauseMusic()."
+  ],
+  "test_report_links": [
+    "/app/backend/tests/test_api.py",
+    "/app/backend/tests/test_soft_delete.py",
+    "/app/test_reports/pytest/pytest_results.xml"
+  ],
+  "action_items": [
+    "Optional polish: swallow the HTMLAudio play()/pause() race warning in /app/frontend/src/audio.ts by guarding startMusic/pauseMusic with the last pending promise so the browser console stays clean on /settings."
+  ],
+  "critical_code_review_comments": [
+    "ads.web.ts correctly exports a stable singleton with available=false and no-op promises — the ReferenceError observed by the user during a hot-reload mid-edit no longer reproduces.",
+    "ads.native.ts guards require('react-native-google-mobile-ads') with try/catch and falls back to noAds when the native module is absent (Expo Go / web); good defensive layering.",
+    "ReviveSheet countdown effect depends on [left, busy, onGiveUp]; onGiveUp identity changes would reset the timer. Current parent uses useCallback stable refs (verified behaviour: ticks continuously), so no issue in practice but worth noting."
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "100%", "frontend": "100%"},
+  "seed_data_creation": "Backend pytest created TEST_A1→TEST_A1b and TEST_B1 players (ids regenerated each run). No manual seed from UI side.",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Expo web runs on https://run-forever-31.preview.emergentagent.com with testIDs: menu-play-button, menu-keys, hud-pause-button, hud-score, pause-sheet, pause-settings-button, pause-resume-button, revive-sheet, revive-countdown, revive-cost, revive-keys-button, revive-ad-button, revive-giveup-button, game-over-sheet/-retry-button/-home-button/-score, settings-screen, settings-close-button, settings-track-<id> (invincible, fearless2, skyhigh, mortals, royalty), settings-adfree-card, settings-adfree-button, settings-adfree-message. Keyboard controls on web: ArrowLeft/Right/Up/Down. A reliable way to crash fast is to spam ArrowLeft+ArrowRight to force into side obstacles.",
+  "rca_of_issue": "The original 'ReferenceError: ads is not defined' was a transient hot-reload artifact from a mid-edit save. Current implementation imports `ads` from '@/src/ads/ads' (which re-exports from ads.web.ts on web) at the top of index.tsx and settings.tsx; module resolution now succeeds and all `ads.*` calls (`ads.initialize()`, `ads.available`, `ads.showInterstitial()`, `ads.showRewarded()`) resolve to the web stub returning false. Verified no ReferenceError across all tested flows."
+}

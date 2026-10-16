@@ -3,6 +3,7 @@ import React from "react";
 import { Text, View } from "react-native";
 
 import { ChunkyButton } from "@/src/components/ChunkyButton";
+import { CoinIcon } from "@/src/components/CoinIcon";
 import { Sheet, SheetActions } from "@/src/components/game/Sheet";
 import type { RunResult } from "@/src/game/engine";
 import { makeStyles, useTheme } from "@/src/theme";
@@ -35,7 +36,7 @@ export function GameOverSheet({ result, isRecord, bestScore, onRetry, onHome }: 
       </View>
       <View style={styles.statsRow}>
         <View style={styles.stat} testID="game-over-coins">
-          <Ionicons name="ellipse" size={18} color={colors.brandTertiaryShade} />
+          <CoinIcon size={20} />
           <Text style={styles.statValue}>{result.coins}</Text>
           <Text style={styles.statLabel}>altın</Text>
         </View>
