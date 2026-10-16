@@ -1,0 +1,172 @@
+{
+  "app_name": "Istanbul Koşucusu (Istanbul Runner)",
+  "personality": "4 Tactile / Playful LIGHT",
+  "personality_one_liner": "A vibrant, chunky, and tactile arcade aesthetic capturing the high-energy joy of an endless runner through the historic streets of Istanbul.",
+  "color": {
+    "surface": "#FDFBF7",
+    "onSurface": "#2A2626",
+    "surfaceSecondary": "#FFFFFF",
+    "onSurfaceSecondary": "#2A2626",
+    "surfaceTertiary": "#F4EFE6",
+    "onSurfaceTertiary": "#2A2626",
+    "surfaceInverse": "#2A2626",
+    "onSurfaceInverse": "#FFFFFF",
+    "muted": "#8C867C",
+    "brand": "#D62828",
+    "onBrand": "#FFFFFF",
+    "brandPrimary": "#D62828",
+    "onBrandPrimary": "#FFFFFF",
+    "brandSecondary": "#F4A261",
+    "onBrandSecondary": "#2A2626",
+    "brandTertiary": "#E9C46A",
+    "onBrandTertiary": "#2A2626",
+    "success": "#43A047",
+    "onSuccess": "#FFFFFF",
+    "warning": "#FFB300",
+    "onWarning": "#2A2626",
+    "error": "#D32F2F",
+    "onError": "#FFFFFF",
+    "info": "#00A8CC",
+    "onInfo": "#FFFFFF",
+    "border": "#E0DCD6",
+    "borderStrong": "#2A2626",
+    "divider": "#E0DCD6"
+  },
+  "typography": {
+    "displayFontFamily": "Fredoka",
+    "textFontFamily": "Nunito",
+    "scale": {
+      "sm": 12,
+      "base": 14,
+      "lg": 16,
+      "xl": 20,
+      "2xl": 24
+    }
+  },
+  "spacing": {
+    "rule": "Generous tactile spacing. HUD elements should float slightly away from screen edges (safe area + md padding). Modals and cards should have chunky paddings.",
+    "xs": 4,
+    "sm": 8,
+    "md": 12,
+    "lg": 16,
+    "xl": 24,
+    "2xl": 32,
+    "3xl": 48
+  },
+  "radius_tokens": {
+    "sm": 6,
+    "md": 12,
+    "lg": 20,
+    "pill": 999
+  },
+  "shadow_tier": "2",
+  "navigation": "stack_only",
+  "icon_set": "Phosphor",
+  "glassmorphism": {
+    "enabled": "true",
+    "do's": [
+      "Use heavy blur underneath Game Over sheets and Pause menus so the 3D scene is abstracted but atmospheric behind them."
+    ],
+    "dont's": [
+      "Don't blur gameplay HUD elements (score/coins) - these need to be solid, chunky containers for instant readability during fast gameplay."
+    ]
+  },
+  "platform_libraries": {
+    "glass": {
+      "ios": "expo-glass-effect",
+      "android": "expo-blur",
+      "low_end_android_fallback": "solid surfaceSecondary"
+    },
+    "image": "expo-image",
+    "blur": "expo-blur",
+    "bottom_sheet": "@gorhom/bottom-sheet",
+    "animation": "react-native-reanimated",
+    "gesture": "react-native-gesture-handler"
+  },
+  "screens": [
+    {
+      "name": "Home / Main Menu",
+      "purpose": "The gateway to the game, overlays directly on the idle 3D scene.",
+      "states": {
+        "loading": "Spinner over game canvas",
+        "empty": "N/A",
+        "error": "N/A"
+      },
+      "layout": "Transparent full-screen overlay. Top safe area: chunky coin counter and best score pill. Center: Massive 'Oyna' (Play) button with a heavy bottom border (tactile press effect). Bottom: Row of circular icon buttons for Settings, Leaderboard, and Friends."
+    },
+    {
+      "name": "3D Game Screen & HUD",
+      "purpose": "Provides instant feedback during high-speed gameplay without blocking the view.",
+      "states": {
+        "loading": "N/A",
+        "empty": "N/A",
+        "error": "N/A"
+      },
+      "layout": "Top Left: Score and Distance in thick, high-contrast containers. Top Right: Pause button. Top Center (or right below safe area): Coin counter. All HUD elements should use surfaceSecondary or brandPrimary solids with borderStrong (thick dark borders) for pop."
+    },
+    {
+      "name": "Game Over Sheet",
+      "purpose": "Displays run results, celebrates new records, and prompts replay.",
+      "states": {
+        "loading": "Calculating score...",
+        "empty": "N/A",
+        "error": "Failed to submit score"
+      },
+      "layout": "Center-aligned modal over a blurred gameplay background. Features a giant score number, coin summary, a 'Yeni Rekor!' (New Record) badge if applicable, and two massive side-by-side buttons: 'Ana Menü' (Home) and 'Tekrar Oyna' (Retry)."
+    },
+    {
+      "name": "Friends & Leaderboard",
+      "purpose": "Social competition hub mimicking Subway Surfers Top Run.",
+      "states": {
+        "loading": "Fetching scores...",
+        "empty": "Henüz arkadaş eklenmedi (No friends added yet) + Add Friend CTA",
+        "error": "Bağlantı hatası (Connection error)"
+      },
+      "layout": "Tabbed view (Yerel / Arkadaşlar). Top section has the user's nickname and Friend Code. List items are chunky, highly separated cards showing rank, avatar (initials or random color), name, and score. Rank 1, 2, 3 have gold/silver/bronze tints."
+    },
+    {
+      "name": "Settings & Nickname",
+      "purpose": "Quick access to game preferences.",
+      "states": {
+        "loading": "N/A",
+        "empty": "N/A",
+        "error": "N/A"
+      },
+      "layout": "Simple bottom sheet or centered modal. Large toggles for Sound/Music. A text input for Nickname with a prominent 'Kaydet' (Save) button."
+    },
+    {
+      "name": "Onboarding Tutorial",
+      "purpose": "Teaches swipe controls overlaying the first few seconds of a run.",
+      "states": {
+        "loading": "N/A",
+        "empty": "N/A",
+        "error": "N/A"
+      },
+      "layout": "Semi-transparent dark scrim with animated white swipe arrows (Up to jump, Down to roll, Left/Right to switch lanes) and short Turkish hints (Zıpla, Eğil, Sağa/Sola Kay). Dismisses after first successful input."
+    }
+  ],
+  "images": {
+    "leaderboard_header": {
+      "url": "https://images.pexels.com/photos/32560517/pexels-photo-32560517.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940",
+      "dark": "https://images.unsplash.com/photo-1636537511494-c3e558e0702b?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjAxODF8MHwxfHNlYXJjaHwxfHxpc3RhbmJ1bCUyMGdhbGF0YSUyMHRvd2VyJTIwaWxsdXN0cmF0aW9ufGVufDB8fHx8MTc5MjE3MDc0Nnww&ixlib=rb-4.1.0&q=85",
+      "alt": "A nostalgic red tram on Istanbul streets, used as atmospheric background for menus"
+    }
+  },
+  "instructions_to_main_agent": [
+    "3D Canvas Context: The entire app's background should essentially be the three.js / expo-gl canvas. The Main Menu is just a React Native UI overlaying the 3D scene. Do NOT build the Main Menu as a completely opaque separate screen.",
+    "HUD Aesthetic: Subway Surfers is defined by 'chunky' UI. Use borderStrong (#2A2626) to add thick outlines to buttons and score pills. Give primary buttons a bottom border of 4-6px to simulate a physical, tactile 3D button that depresses on touch.",
+    "Color Usage: Use 'brand' (#D62828 - Ottoman Red) for primary CTA buttons. Use 'info' (#00A8CC - Bosphorus Blue) for secondary actions or decorative elements. Coins and high-score badges should use 'brandTertiary' (#E9C46A).",
+    "Swipe Gestures: Use react-native-gesture-handler (FlingGestureHandler or PanGestureHandler) mapped over the full GL canvas to capture up/down/left/right swipes, driving the 3D character's lane/jump/roll state.",
+    "Typography: Use Fredoka for all numbers (scores, coins, distances) and major button labels. Use Nunito for smaller labels, descriptions, and settings text.",
+    "Local vs Online Leaderboard: Implement standard AsyncStorage for local top 10. For online friends, a simple mock API structure (or supabase if instructed) where users query a 'friend code' to append to their local list of tracked friends.",
+    "Scene Palette (Three.js): Instruct the 3D generation to use a Bosphorus blue skybox/fog, warm Galata stone building colors, and an Ottoman red player/tram obstacle."
+  ],
+  "haptics": {
+    "play_button_press": "impactMedium",
+    "swipe_lane_change": "impactLight",
+    "swipe_jump_roll": "impactLight",
+    "coin_collect": "impactLight",
+    "crash_obstacle": "notificationError",
+    "new_high_score": "notificationSuccess"
+  }
+}
