@@ -1,0 +1,30 @@
+{
+  "summary": "Istanbul Runner iteration 2 (audio + intro overlay + soft-delete). Backend: 17/17 pytest cases pass (16 existing + 1 new soft-delete flow in test_soft_delete.py). The new test POSTs TEST_SD_T + TEST_SD_M players, befriends T, then sets deleted_at on T via motor and verifies: GET /api/players/{id}->404, /api/leaderboard excludes T, re-adding by friend_code->404, friends list excludes T; then soft-deletes M for cleanup. Frontend (390x844 web preview): intro-overlay visible on load with intro-progress + intro-tip; main-menu and menu-play-button are NOT present at 1.5s during intro; main-menu appears after ~3s; menu-title text is 'ISTANBUL\\nRUNNER'; 'SONSUZ KOŞU' absent anywhere; app.json name='Istanbul Runner'. Gameplay: OYNA->HUD (hud-score/hud-coins/hud-distance/hud-pause-button all visible), score increments (observed 'Skor22' after 2s), ArrowLeft/Right/Up/Down accepted, pause-sheet opens, pause-resume-button resumes, pause-home-button returns to main-menu. Settings: all four switches present (settings-sound-switch, settings-music-switch, settings-shadows-switch, settings-haptics-switch) plus nickname-input/save/reset-tutorial/close; toggling sound/music/shadows OFF and reloading persists the OFF state (verified visually: switches render grey after reload). Audio: NO '[audio] init failed' or any audio console errors; after pressing OYNA 12 .wav assets requested over HTTP (jump, coin x4 players, crash, powerup, shield, swipe x2 players, roll, music_loop) via Metro /_expo endpoint. Deprecated-package audit: NONE of expo-av/expo-barcode-scanner/expo-background-fetch present (expo-audio is the current package and is correctly used). The 'Sound not working' bug cannot be reproduced on web preview: assets load, players are created, music_loop fetched after the OYNA user gesture (satisfies browser autoplay policy); on headless Chromium audio is inaudible by design but the init path is clean.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [],
+    "react_native_issues": [
+      {"component": "RN Web style props", "issue": "Console warning: 'textShadow*' style props are deprecated. Use 'textShadow'. Reference: /app/frontend/src/components/game/MainMenu.tsx (title style textShadowColor/Offset/Radius) and /app/frontend/src/components/game/Hud.tsx likely. Low impact."},
+      {"component": "RN Web props", "issue": "Console warning: props.pointerEvents is deprecated. Use style.pointerEvents. Reference: /app/frontend/src/components/game/MainMenu.tsx:26 uses pointerEvents=\"box-none\" as a prop. Low impact."}
+    ]
+  },
+  "test_report_links": ["/app/backend/tests/test_api.py", "/app/backend/tests/test_soft_delete.py", "/app/test_reports/pytest/pytest_results.xml"],
+  "action_items": [
+    "Optional: move pointerEvents=\"box-none\" into style={{pointerEvents: 'box-none'}} on MainMenu root and replace textShadowColor/Offset/Radius with the combined textShadow CSS shorthand to silence RN web warnings (same two warnings reported in iteration 1).",
+    "Optional: expo-audio does not create <audio> DOM elements on web (uses Web Audio API); if main agent wants a smoke-test hook, expose a window.__audio flag or similar for Playwright to verify music/SFX are triggered."
+  ],
+  "critical_code_review_comments": [
+    "IntroOverlay correctly gates MainMenu via introDone state; MainMenu only renders when mode==='menu' && introDone; intro covers everything until ready (glReady && profile.loaded) with MIN_MS=3000, MAX_MS=7000.",
+    "server.py ACTIVE = {deleted_at: None} is applied consistently in get_player_or_404, friend lookup, friends list ($in filter + ACTIVE), and leaderboard; add-friend upsert correctly reactivates soft-deleted friendship rows.",
+    "audio.ts init() rotates coin (4) and swipe (2) players for overlap; music loop uses MUSIC_VOLUME=0.42; startMusic() is called from the OYNA tap handler so browser autoplay policy is satisfied."
+  ],
+  "updated_files": ["/app/backend/tests/test_soft_delete.py", "/app/test_reports/iteration_2.json", "/app/test_reports/pytest/pytest_results.xml"],
+  "success_rate": {"backend": "100%", "frontend": "100%"},
+  "seed_data_creation": "test_soft_delete.py creates TEST_SD_T and TEST_SD_M players and soft-deletes both at test end to keep leaderboard clean; test_api.py creates TEST_A1/TEST_A1b/TEST_B1 (leftover active in Mongo, consistent with iteration 1).",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Backend URL https://run-forever-31.preview.emergentagent.com. Run `pytest /app/backend/tests/ -v` (17 tests, ~5s). Soft-delete tests connect to Mongo via MONGO_URL/DB_NAME from backend/.env and spawn a short-lived AsyncIOMotorClient per op to avoid asyncio event-loop closure. Headless Chromium cannot play audible audio; verify audio via network tab (expect 12 .wav requests) and absence of '[audio] init failed'. Intro overlay runs 3-7s before main menu renders; wait_for_selector('[data-testid=\"main-menu\"]') up to 10s. Settings switches on RN web do not expose aria-checked reliably in Playwright; verify toggle state by screenshot colour (teal=on, grey=off) or by reading localStorage keys sound_enabled/music_enabled/shadows_enabled.",
+  "rca_of_issue": "Reported 'Sound not working': not reproducible in web preview. Audio pipeline is correct: expo-audio createAudioPlayer loads all 7 SFX + music_loop (12 HTTP requests observed), no init errors, music_loop requested only after OYNA tap (satisfying autoplay gesture requirement). Likely user ran with sound_enabled=false in local storage from a prior settings toggle, OR the environment was Expo Go / native build (expo-audio on web uses Web Audio API without DOM <audio> elements). Reported 'intro behind menu': FIXED - IntroOverlay now renders LAST inside the root view with mode-based gating ({!introDone ? <IntroOverlay/> : null} and {mode==='menu' && introDone ? <MainMenu/> : null}); verified at 1.5s only intro is visible, main-menu hidden; after intro completes main-menu appears and overlay fades out."
+}

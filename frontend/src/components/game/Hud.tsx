@@ -21,7 +21,7 @@ export function Hud({ hud, onPause }: Props) {
   const progress = pu ? Math.max(0, pu.remaining / pu.total) : 0;
 
   return (
-    <View pointerEvents="box-none" style={[styles.root, { paddingTop: insets.top + spacing.md }]} testID="game-hud">
+    <View style={[styles.root, { paddingTop: insets.top + spacing.md }]} testID="game-hud">
       <View style={styles.topRow}>
         <View style={styles.leftCol}>
           <StatPill testID="hud-score" tone="dark" value={hud.score.toLocaleString("tr-TR")} label="Skor" size="lg" />
@@ -60,7 +60,7 @@ export function Hud({ hud, onPause }: Props) {
 }
 
 const useStyles = makeStyles(() => ({
-  root: { position: "absolute", left: 0, right: 0, top: 0, paddingHorizontal: spacing.lg, gap: spacing.md },
+  root: { position: "absolute", left: 0, right: 0, top: 0, paddingHorizontal: spacing.lg, gap: spacing.md, pointerEvents: "box-none" },
   topRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start" },
   leftCol: { gap: spacing.sm, alignItems: "flex-start" },
   rightCol: { gap: spacing.sm, alignItems: "flex-end" },

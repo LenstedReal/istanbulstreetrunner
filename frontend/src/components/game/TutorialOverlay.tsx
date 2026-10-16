@@ -33,7 +33,7 @@ function Hint({ icon, text, dx, dy, testID }: { icon: IconName; text: string; dx
 export function TutorialOverlay() {
   const styles = useStyles();
   return (
-    <View pointerEvents="none" style={styles.scrim} testID="tutorial-overlay">
+    <View style={styles.scrim} testID="tutorial-overlay">
       <View style={styles.cross}>
         <Hint icon="arrow-up" text="Zıpla" dx={0} dy={-26} testID="tutorial-hint-jump" />
         <View style={styles.midRow}>
@@ -60,6 +60,7 @@ const useStyles = makeStyles((colors) => ({
     alignItems: "center",
     justifyContent: "center",
     backgroundColor: colors.scrimLight,
+    pointerEvents: "none",
   },
   cross: { alignItems: "center", gap: spacing.md },
   midRow: { flexDirection: "row", alignItems: "center", gap: spacing.xl },

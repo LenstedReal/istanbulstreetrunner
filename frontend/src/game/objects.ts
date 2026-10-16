@@ -30,6 +30,7 @@ export class ObjectFactory {
   readonly cyl = new THREE.CylinderGeometry(1, 1, 1, 12);
   readonly sphere = new THREE.SphereGeometry(1, 12, 10);
   readonly coinGeo = new THREE.CylinderGeometry(0.38, 0.38, 0.1, 18);
+  readonly coinRimGeo = new THREE.TorusGeometry(0.36, 0.045, 6, 24).rotateX(Math.PI / 2);
   readonly torus = new THREE.TorusGeometry(0.16, 0.06, 6, 12);
   readonly octa = new THREE.OctahedronGeometry(0.42, 0);
   readonly ico = new THREE.IcosahedronGeometry(0.42, 0);
@@ -53,6 +54,7 @@ export class ObjectFactory {
     lampGlow: lambert(SCENE.lampGlow, { emissive: SCENE.lampGlow, emissiveIntensity: 0.9 }),
     dome: lambert(SCENE.dome),
     coin: lambert(SCENE.coin, { emissive: 0x8a6210, emissiveIntensity: 0.6 }),
+    coinEdge: lambert(SCENE.coinEdge, { emissive: 0x5a3a08, emissiveIntensity: 0.5 }),
     magnet: lambert(SCENE.magnet),
     magnetTip: lambert(SCENE.magnetTip),
     shield: new THREE.MeshLambertMaterial({ color: SCENE.shield, transparent: true, opacity: 0.75, emissive: 0x005566 }),
@@ -68,18 +70,28 @@ export class ObjectFactory {
     return m;
   }
 
+  private withShadows<T extends THREE.Object3D>(obj: T): T {
+    obj.traverse((c) => {
+      if ((c as THREE.Mesh).isMesh) {
+        c.castShadow = true;
+        c.receiveShadow = true;
+      }
+    });
+    return obj;
+  }
+
   makeObstacle(kind: ObstacleKind): THREE.Group {
     switch (kind) {
       case "tram":
-        return this.makeTram();
+        return this.withShadows(this.makeTram());
       case "cart":
-        return this.makeCart();
+        return this.withShadows(this.makeCart());
       case "barrier":
-        return this.makeBarrier();
+        return this.withShadows(this.makeBarrier());
       case "sign":
-        return this.makeSign();
+        return this.withShadows(this.makeSign());
       case "pillar":
-        return this.makePillar();
+        return this.withShadows(this.makePillar());
     }
   }
 
@@ -102,6 +114,20 @@ export class ObjectFactory {
     g.add(this.part(m.headlight, 0.3, 0.25, 0.08, -0.6, 0.95, 3.52));
     g.add(this.part(m.headlight, 0.3, 0.25, 0.08, 0.6, 0.95, 3.52));
     g.add(this.part(m.tramCream, 1.0, 0.3, 0.08, 0, 2.05, 3.52));
+    g.add(this.part(m.black, 0.45, 0.22, 0.09, 0, 0.62, 3.52)); // number plate
+    // Door seams & bogies
+    for (const z of [-1.95, 1.95]) g.add(this.part(m.tramDark, 1.97, 1.0, 0.05, 0, 0.75, z));
+    for (const z of [-2.3, 2.3]) {
+      g.add(this.part(m.black, 1.5, 0.35, 1.6, 0, 0.0, z));
+      for (const x of [-0.75, 0.75]) {
+        const wheel = new THREE.Mesh(this.cyl, m.metal);
+        wheel.scale.set(0.3, 0.12, 0.3);
+        wheel.rotation.z = Math.PI / 2;
+        wheel.position.set(x, 0.3, z);
+        g.add(wheel);
+      }
+    }
+    g.add(this.part(m.tramCream, 0.35, 0.12, 0.6, -0.78, 1.0, 3.3)); // side mirror
     return g;
   }
 
@@ -181,6 +207,9 @@ export class ObjectFactory {
   makeCoin(): THREE.Mesh {
     const c = new THREE.Mesh(this.coinGeo, this.mats.coin);
     c.rotation.x = Math.PI / 2;
+    c.castShadow = true;
+    const rim = new THREE.Mesh(this.coinRimGeo, this.mats.coinEdge);
+    c.add(rim);
     return c;
   }
 

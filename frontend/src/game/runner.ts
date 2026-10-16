@@ -39,13 +39,14 @@ export class Runner {
     capM.scale.set(0.245, 0.14, 0.245);
     capM.position.set(0, 1.74, 0);
     b.add(capM);
-    b.add(f.part(cap, 0.3, 0.05, 0.22, 0, 1.72, 0.22)); // backwards visor
+    b.add(f.part(cap, 0.3, 0.05, 0.24, 0, 1.72, -0.23)); // cap visor points forward (-Z, direction of travel)
 
     const limb = (pivot: THREE.Group, x: number, y: number, w: number, h: number, m: THREE.Material, foot?: THREE.Material) => {
       pivot.position.set(x, y, 0);
       const seg = f.part(m, w, h, w + 0.04, 0, -h);
       pivot.add(seg);
-      if (foot) pivot.add(f.part(foot, w + 0.03, 0.12, 0.34, 0, -h - 0.02, 0.06));
+      // Shoe toe extends forward (-Z)
+      if (foot) pivot.add(f.part(foot, w + 0.03, 0.12, 0.36, 0, -h - 0.02, -0.07));
       else {
         const hand = new THREE.Mesh(f.sphere, skin);
         hand.scale.setScalar(0.09);
@@ -67,6 +68,14 @@ export class Runner {
     this.shieldBubble.position.y = 0.95;
     this.shieldBubble.visible = false;
 
+    // Backpack
+    b.add(f.part(cap, 0.4, 0.42, 0.18, 0, 0.9, 0.24));
+    b.add(f.part(jacketDark, 0.08, 0.5, 0.06, -0.16, 0.86, 0.17));
+    b.add(f.part(jacketDark, 0.08, 0.5, 0.06, 0.16, 0.86, 0.17));
+
+    b.traverse((c) => {
+      if ((c as THREE.Mesh).isMesh) c.castShadow = true;
+    });
     this.group.add(b, this.shieldBubble);
   }
 

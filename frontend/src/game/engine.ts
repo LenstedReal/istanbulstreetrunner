@@ -151,14 +151,29 @@ export class RunnerEngine {
     this.renderer.setPixelRatio(1);
     this.renderer.setSize(w, h, false);
     this.renderer.setClearColor(SCENE.haze);
+    this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    this.renderer.toneMappingExposure = 1.08;
+    this.renderer.shadowMap.enabled = true;
+    this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 
     this.scene.background = new THREE.Color(SCENE.haze);
     this.scene.fog = new THREE.Fog(SCENE.fog, 45, 160);
 
     this.camera = new THREE.PerspectiveCamera(80, w / h, 0.1, 600);
 
-    this.scene.add(new THREE.HemisphereLight(SCENE.hemiSky, SCENE.hemiGround, 1.05));
-    this.sun = new THREE.DirectionalLight(SCENE.sun, 1.4);
+    this.scene.add(new THREE.HemisphereLight(SCENE.hemiSky, SCENE.hemiGround, 0.9));
+    this.sun = new THREE.DirectionalLight(SCENE.sun, 1.6);
+    this.sun.castShadow = true;
+    this.sun.shadow.mapSize.set(1024, 1024);
+    this.sun.shadow.bias = -0.0008;
+    this.sun.shadow.normalBias = 0.03;
+    const sc = this.sun.shadow.camera;
+    sc.left = -22;
+    sc.right = 22;
+    sc.top = 30;
+    sc.bottom = -30;
+    sc.near = 1;
+    sc.far = 120;
     this.scene.add(this.sun, this.sun.target);
 
     this.world = new CityWorld(this.scene, this.factory);
@@ -191,6 +206,18 @@ export class RunnerEngine {
 
   isRunning() {
     return this.phase === "running";
+  }
+
+  /** Shadows are the most expensive effect; low-end devices can switch them off. */
+  setShadows(on: boolean) {
+    if (this.renderer.shadowMap.enabled === on) return;
+    this.renderer.shadowMap.enabled = on;
+    this.sun.castShadow = on;
+    this.scene.traverse((o) => {
+      const mat = (o as THREE.Mesh).material as THREE.Material | THREE.Material[] | undefined;
+      if (!mat) return;
+      (Array.isArray(mat) ? mat : [mat]).forEach((m) => (m.needsUpdate = true));
+    });
   }
 
   input(action: GameInput) {
@@ -391,8 +418,10 @@ export class RunnerEngine {
       cam.position.y += rand(-1, 1) * this.shake * 0.18;
     }
     cam.lookAt(lx, ly, lz);
-    this.sun.position.set(this.px + 18, 40, this.pz + 12);
-    this.sun.target.position.set(this.px, 0, this.pz - 10);
+    // Low golden-hour sun from the right so buildings throw long shadows across the street.
+    this.sun.position.set(this.px + 26, 30, this.pz - 6);
+    this.sun.target.position.set(this.px, 0, this.pz - 14);
+    this.sun.target.updateMatrixWorld();
   }
 
   // -------------------------------------------------------------- spawning

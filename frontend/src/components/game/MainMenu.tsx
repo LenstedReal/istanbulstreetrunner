@@ -23,16 +23,15 @@ export function MainMenu({ nickname, bestScore, totalCoins, onPlay, onLeaderboar
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
   return (
-    <View pointerEvents="box-none" style={[styles.root, { paddingTop: insets.top + spacing.md, paddingBottom: insets.bottom + spacing.xl }]} testID="main-menu">
+    <View style={[styles.root, { paddingTop: insets.top + spacing.md, paddingBottom: insets.bottom + spacing.xl }]} testID="main-menu">
       <Animated.View entering={FadeInDown.duration(350)} style={styles.topRow}>
         <StatPill testID="menu-coins" tone="gold" icon="ellipse" iconColor={colors.brandTertiaryShade} value={totalCoins.toLocaleString("tr-TR")} />
         <StatPill testID="menu-best" tone="dark" icon="trophy" iconColor={colors.brandTertiary} label="En iyi" value={bestScore.toLocaleString("tr-TR")} />
       </Animated.View>
 
       <Animated.View entering={FadeInDown.delay(80).duration(450)} style={styles.titleBlock}>
-        <Text style={styles.kicker}>SONSUZ KOŞU</Text>
         <Text style={styles.title} testID="menu-title">
-          İSTANBUL{"\n"}KOŞUSU
+          ISTANBUL{"\n"}RUNNER
         </Text>
         <View style={styles.nickRow} testID="menu-nickname">
           <Ionicons name="person-circle" size={18} color={colors.onSurfaceInverse} />
@@ -53,20 +52,9 @@ export function MainMenu({ nickname, bestScore, totalCoins, onPlay, onLeaderboar
 }
 
 const useStyles = makeStyles((colors) => ({
-  root: { position: "absolute", left: 0, right: 0, top: 0, bottom: 0, paddingHorizontal: spacing.lg, justifyContent: "space-between" },
+  root: { position: "absolute", left: 0, right: 0, top: 0, bottom: 0, paddingHorizontal: spacing.lg, justifyContent: "space-between", pointerEvents: "box-none" },
   topRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
   titleBlock: { alignItems: "flex-start", gap: spacing.sm },
-  kicker: {
-    fontFamily: fonts.textHeavy,
-    fontSize: 14,
-    letterSpacing: 4,
-    color: colors.onBrandPrimary,
-    backgroundColor: colors.brandPrimary,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.xs,
-    borderRadius: radius.sm,
-    overflow: "hidden",
-  },
   title: {
     fontFamily: fonts.display,
     fontSize: 58,

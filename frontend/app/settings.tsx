@@ -1,10 +1,11 @@
 import Ionicons from "@react-native-vector-icons/ionicons";
 import { useRouter } from "expo-router";
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { Pressable, Switch, Text, TextInput, View } from "react-native";
 import { KeyboardAwareScrollView } from "react-native-keyboard-controller";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+import { audio, MUSIC_TRACKS } from "@/src/audio";
 import { ChunkyButton } from "@/src/components/ChunkyButton";
 import { useProfile } from "@/src/profile";
 import { makeStyles, useTheme } from "@/src/theme";
@@ -17,6 +18,16 @@ export default function SettingsScreen() {
   const router = useRouter();
   const profile = useProfile();
   const [nick, setNick] = useState(profile.nickname);
+  useEffect(() => {
+    setNick(profile.nickname);
+  }, [profile.nickname]);
+  // Track preview: play the chosen song while this screen is open, stop when leaving.
+  useEffect(() => {
+    if (profile.music) audio.startMusic();
+    return () => audio.pauseMusic();
+  }, [profile.music, profile.musicTrack]);
+
+  const close = () => (router.canGoBack() ? router.back() : router.replace("/"));
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
 
@@ -41,7 +52,7 @@ export default function SettingsScreen() {
     <View style={styles.root} testID="settings-screen">
       <View style={[styles.header, { paddingTop: insets.top + spacing.sm }]}>
         <Text style={styles.title}>Ayarlar</Text>
-        <Pressable testID="settings-close-button" accessibilityRole="button" onPress={() => router.back()} style={styles.close}>
+        <Pressable testID="settings-close-button" accessibilityRole="button" onPress={close} style={styles.close}>
           <Ionicons name="close" size={26} color={colors.onSurface} />
         </Pressable>
       </View>
@@ -74,8 +85,60 @@ export default function SettingsScreen() {
           </Text>
         </View>
 
+        <Text style={styles.section}>Ses</Text>
+        <View style={styles.card}>
+          <View style={styles.rowItem}>
+            <View style={styles.rowText}>
+              <Text style={styles.rowTitle}>Ses efektleri</Text>
+              <Text style={styles.help}>Zıplama, altın ve çarpma sesleri</Text>
+            </View>
+            <Switch testID="settings-sound-switch" value={profile.sound} onValueChange={(v) => profile.setSound(v)} trackColor={{ true: colors.info, false: colors.border }} thumbColor={colors.surfaceSecondary} />
+          </View>
+          <View style={styles.divider} />
+          <View style={styles.rowItem}>
+            <View style={styles.rowText}>
+              <Text style={styles.rowTitle}>Müzik</Text>
+              <Text style={styles.help}>NCS parçaları, kesintisiz döngü</Text>
+            </View>
+            <Switch testID="settings-music-switch" value={profile.music} onValueChange={(v) => profile.setMusic(v)} trackColor={{ true: colors.info, false: colors.border }} thumbColor={colors.surfaceSecondary} />
+          </View>
+          <View style={styles.divider} />
+          <Text style={styles.rowTitle}>Parça seç</Text>
+          {MUSIC_TRACKS.map((t) => {
+            const active = t.id === profile.musicTrack;
+            return (
+              <Pressable
+                key={t.id}
+                testID={`settings-track-${t.id}`}
+                accessibilityRole="radio"
+                accessibilityState={{ selected: active }}
+                onPress={() => profile.setMusicTrack(t.id)}
+                style={[styles.track, { borderColor: active ? colors.info : colors.border, backgroundColor: active ? colors.surfaceTertiary : colors.surfaceSecondary }]}
+              >
+                <Ionicons name={active ? "radio-button-on" : "radio-button-off"} size={22} color={active ? colors.info : colors.muted} />
+                <View style={styles.rowText}>
+                  <Text style={styles.rowTitle}>{t.title}</Text>
+                  <Text style={styles.help}>{t.artist}</Text>
+                </View>
+                {active && profile.music ? <Ionicons name="musical-notes" size={18} color={colors.info} /> : null}
+              </Pressable>
+            );
+          })}
+          <Text style={styles.help} testID="settings-music-credits">
+            Müzikler NoCopyrightSounds (ncs.io) yayınlarıdır. Parça: {MUSIC_TRACKS.map((t) => `${t.artist} – ${t.title}`).join(" · ")}. Mağaza yayını öncesi NCS kullanım politikasını kontrol edin.
+          </Text>
+        </View>
+
         <Text style={styles.section}>Oyun</Text>
         <View style={styles.card}>
+          <View style={styles.rowItem}>
+            <View style={styles.rowText}>
+              <Text style={styles.rowTitle}>Gölgeler</Text>
+              <Text style={styles.help}>Daha gerçekçi görünüm; eski cihazlarda kapatın</Text>
+            </View>
+            <Switch testID="settings-shadows-switch" value={profile.shadows} onValueChange={(v) => profile.setShadows(v)} trackColor={{ true: colors.info, false: colors.border }} thumbColor={colors.surfaceSecondary} />
+          </View>
+          <View style={styles.divider} />
           <View style={styles.rowItem}>
             <View style={styles.rowText}>
               <Text style={styles.rowTitle}>Titreşim</Text>
@@ -157,6 +220,7 @@ const useStyles = makeStyles((colors) => ({
   rowText: { flex: 1, gap: 2 },
   rowTitle: { fontFamily: fonts.textHeavy, fontSize: 15, color: colors.onSurfaceSecondary },
   divider: { height: 1, backgroundColor: colors.divider },
+  track: { flexDirection: "row", alignItems: "center", gap: spacing.md, minHeight: 56, paddingHorizontal: spacing.md, borderRadius: radius.md, borderWidth: 2 },
   ctrl: { flexDirection: "row", alignItems: "center", gap: spacing.md },
   ctrlIcon: { width: 36, height: 36, borderRadius: radius.pill, backgroundColor: colors.brandPrimary, alignItems: "center", justifyContent: "center" },
 }));

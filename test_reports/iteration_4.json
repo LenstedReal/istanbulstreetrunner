@@ -1,0 +1,30 @@
+{
+  "summary": "Iteration 4 verifies the three fixes requested + regression. All three PASS. (1) MUSIC GATING: Hooked HTMLMediaElement.prototype.play/pause from an init script to log every playback. On main menu after intro: 13 'create' events (mp3 + wav preload) but ZERO 'play' events — music is NOT started on menu. Pressing OYNA fires a single [AUDIO_PLAY] on invincible.mp3 at t+4.8s. Escape (pause) fires 2 pause events (both crossfade players). pause-home-button fires 2 more pause events. Opening Settings from the menu fires a PLAY event (preview). Closing Settings fires 4 pause events and URL returns to '/'. Verified for the default invincible.mp3 track. (2) 404 SELF-HEAL: Pre-seeded localStorage player_id='\"000000000000000000000000\"', friend_code='\"ZZZZZZ\"', nickname='\"TEST_SelfHeal\"', deep-linked to /leaderboard, tapped Arkadaşlar. One 404 appears in the network log (friends GET on the bogus id) but [data-testid=leaderboard-error] is NEVER shown; recoverOnline() silently creates a new player (id=6ad26ab86364c44cbb69827f, friend_code=EEWBUL) and the friends board loads showing 'TEST_SelfHeal (sen) · 0 koşu · 0 altın' at rank 1. localStorage player_id/friend_code were updated in place. POST /api/players/{new_id}/runs {score:1234,coins:5} returns 200 with runs=1,high_score=1234 — runs submission works after self-heal. (3) DEEP-LINK BACK: Direct URL load of /leaderboard -> leaderboard-back-button -> URL becomes '/', menu-play-button visible (replace fallback). Direct URL load of /settings -> settings-close-button -> URL becomes '/', menu-play-button visible. No stuck state. (4) Regression: 17/17 backend pytest pass (test_api.py 16 + test_soft_delete.py 1 in 2.97s). Main menu renders cleanly (ISTANBUL RUNNER + OYNA + Koşucu nick + leaderboard/settings pills). HUD renders during gameplay (score counter). No deprecated expo packages detected (expo-audio in use; no expo-av). No React Native red-screen errors. textShadow* deprecation warning present (pre-existing cosmetic).",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [],
+    "react_native_issues": []
+  },
+  "test_report_links": ["/app/backend/tests/test_api.py", "/app/backend/tests/test_soft_delete.py", "/app/test_reports/pytest/pytest_results.xml"],
+  "action_items": [
+    "Soft-delete the players created during this iteration (see seed_data_creation below).",
+    "Cosmetic only: textShadow* deprecation warning from react-native-web ('\"textShadow*\" style props are deprecated. Use \"textShadow\"'). Not blocking."
+  ],
+  "critical_code_review_comments": [
+    "app/index.tsx:46-53 — audio.init() still runs on menu; this just creates AudioPlayer instances (prefetch) without calling play, which matches the spec ('fine if prefetched'). Verified empirically: 13 Audio() create events but 0 play events on menu.",
+    "app/index.tsx:123-135 — useFocusEffect pauses music whenever the screen gains focus if we are not in 'playing' mode, and pauses + sets paused state when losing focus during a run. Correctly stops menu music after returning from Settings/Leaderboard.",
+    "app/settings.tsx:25-28 — track-preview useEffect depends on [profile.music, profile.musicTrack]; cleanup calls audio.pauseMusic(). Preview stops on close. ✓",
+    "app/settings.tsx:30 and app/leaderboard.tsx:67 — both now use `router.canGoBack() ? router.back() : router.replace('/')`. Deep-link stranding fixed. ✓",
+    "src/profile.tsx:151-159 — recoverOnline() removes stored id/friend_code, resets state, calls ensureOnline() (which creates a new player), and best-effort submits the carry-over bestScore. src/profile.tsx:178-180 also recovers on 404 during submitRun. Robust. ✓",
+    "src/audio.ts:174-181 — pauseMusic() clears wantPlaying and pauses BOTH crossfade players (observed as 2 pause events in the hook log). ✓"
+  ],
+  "updated_files": ["/app/test_reports/iteration_4.json", "/app/test_reports/pytest/pytest_results.xml"],
+  "success_rate": {"backend": "100% (17/17)", "frontend": "100% (3/3 targeted fixes + regression)"},
+  "seed_data_creation": "Players created during this iteration via the running web app (please soft-delete): (a) 6ad26ab86364c44cbb69827f — nickname TEST_SelfHeal, friend_code EEWBUL, score 1234, 1 run (self-heal path + POST /runs verification). (b) 2 anonymous 'Koşucu####' profiles were created implicitly during the TEST 1 (music gating) runs because the headless browser had no stored id — not visible in network logs but can be identified in mongo by freshly-created players without the TEST_ prefix created around 2026-01-16 18:17-18:18 UTC. Suggested cleanup: db.players.update_many({$or:[{nickname:/^TEST_SelfHeal$/},{nickname:/^Koşucu[0-9]{4}$/,created_at:{$gt:ISODate('2026-01-16T18:00:00Z')}}]},{$set:{deleted_at:new Date()}}).",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "To verify music gating on web, use page.add_init_script to monkey-patch HTMLMediaElement.prototype.play/pause and window.Audio before navigation — expo-audio on web renders as plain HTMLAudioElement, so this cleanly captures every music/sfx event. Playwright itself cannot verify audible output but the play/pause call sequence is deterministic and sufficient. The crossfade implementation calls pause on BOTH players so expect 2 pause events per pauseMusic() invocation. To test the 404 self-heal reliably, pre-seed localStorage via add_init_script (keys: player_id, friend_code, nickname — all JSON-stringified), then deep-link to /leaderboard and tap the Arkadaşlar tab; recoverOnline runs via a useEffect that watches friendsQ.error. The friend-code box text concatenates label and code (e.g. 'ARKADAŞ KODUEEWBUL').",
+  "rca_of_issue": "N/A — this iteration had no bugs to RCA; it verifies fixes from iteration 3. Confirmed root-cause of previous deep-link bug (expo-router GO_BACK unhandled on single-entry history) is resolved by canGoBack() guard."
+}

@@ -71,6 +71,10 @@ class Player(BaseDocument):
     runs: int = 0
     created_at: datetime = Field(default_factory=now)
     updated_at: datetime = Field(default_factory=now)
+    deleted_at: Optional[datetime] = None
+
+
+ACTIVE = {"deleted_at": None}
 
 
 class Friendship(BaseDocument):
@@ -136,7 +140,7 @@ CODE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
 async def unique_friend_code() -> str:
     for _ in range(20):
         code = "".join(secrets.choice(CODE_ALPHABET) for _ in range(6))
-        if not await db.players.find_one({"friend_code": code}, {"_id": 1}):
+        if not await db.players.find_one({"friend_code": code, **ACTIVE}, {"_id": 1}):
             return code
     raise HTTPException(500, "Arkadaş kodu üretilemedi")
 
@@ -144,7 +148,7 @@ async def unique_friend_code() -> str:
 async def get_player_or_404(player_id: str) -> Player:
     if not ObjectId.is_valid(player_id):
         raise HTTPException(404, "Oyuncu bulunamadı")
-    doc = await db.players.find_one({"_id": ObjectId(player_id)})
+    doc = await db.players.find_one({"_id": ObjectId(player_id), **ACTIVE})
     if not doc:
         raise HTTPException(404, "Oyuncu bulunamadı")
     return Player.from_mongo(doc)
@@ -201,7 +205,7 @@ async def list_friends(player_id: str):
     me = await get_player_or_404(player_id)
     links = await db.friendships.find({"player_id": player_id, "deleted_at": None}).to_list(500)
     friend_ids = [ObjectId(l["friend_id"]) for l in links if ObjectId.is_valid(l["friend_id"])]
-    docs = await db.players.find({"_id": {"$in": friend_ids}}).to_list(500)
+    docs = await db.players.find({"_id": {"$in": friend_ids}, **ACTIVE}).to_list(500)
     friends = [player_out(Player.from_mongo(d)) for d in docs]
     friends.sort(key=lambda p: p.high_score, reverse=True)
     board = sorted([*friends, player_out(me, is_me=True)], key=lambda p: p.high_score, reverse=True)
@@ -214,7 +218,7 @@ async def list_friends(player_id: str):
 async def add_friend(player_id: str, body: FriendAdd):
     me = await get_player_or_404(player_id)
     code = body.friend_code.strip().upper()
-    doc = await db.players.find_one({"friend_code": code})
+    doc = await db.players.find_one({"friend_code": code, **ACTIVE})
     if not doc:
         raise HTTPException(404, "Bu kodla bir oyuncu bulunamadı")
     friend = Player.from_mongo(doc)
@@ -253,7 +257,7 @@ async def remove_friend(player_id: str, friend_id: str):
 @api_router.get("/leaderboard", response_model=List[PlayerOut])
 async def leaderboard(limit: int = 50, me: Optional[str] = None):
     limit = max(1, min(limit, 100))
-    docs = await db.players.find({"high_score": {"$gt": 0}}).sort("high_score", -1).limit(limit).to_list(limit)
+    docs = await db.players.find({"high_score": {"$gt": 0}, **ACTIVE}).sort("high_score", -1).limit(limit).to_list(limit)
     out = []
     for i, d in enumerate(docs):
         p = Player.from_mongo(d)

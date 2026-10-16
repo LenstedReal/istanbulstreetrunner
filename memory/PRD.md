@@ -37,3 +37,9 @@ Three lanes (2.5 m), speed ramp ×1.08 every 10 s, 90 s round, barriers (jump), 
 
 ## Next tasks
 - Collect user feedback on difficulty/speed tuning; add audio; coin shop.
+
+## Update (2026-06-16, iteration 2-4)
+- Real NCS tracks (5) selectable in Settings, seamless 2.2 s crossfade loop; SFX synthesized (scripts/gen_audio.py). Music plays only during a run or as Settings preview.
+- Launch screen (IntroOverlay, 3-7 s), branding regenerated (scripts/gen_branding.py), app renamed "Istanbul Runner", no Emergent assets.
+- Realism: procedural textures, shadows (toggle), tram/building details, runner facing fixed.
+- Backend soft-delete (deleted_at) + scripts/cleanup_test_data.py; DB cleaned of test accounts; profile self-heals on 404.

@@ -8,9 +8,11 @@ import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import { ChunkyButton } from "@/src/components/ChunkyButton";
 import { GameOverSheet } from "@/src/components/game/GameOverSheet";
 import { Hud } from "@/src/components/game/Hud";
+import { IntroOverlay } from "@/src/components/game/IntroOverlay";
 import { MainMenu } from "@/src/components/game/MainMenu";
 import { Sheet, SheetActions } from "@/src/components/game/Sheet";
 import { TutorialOverlay } from "@/src/components/game/TutorialOverlay";
+import { audio } from "@/src/audio";
 import { EngineCallbacks, GameEvent, GameInput, HudState, RunResult, RunnerEngine } from "@/src/game/engine";
 import { useProfile } from "@/src/profile";
 import { makeStyles } from "@/src/theme";
@@ -32,6 +34,7 @@ export default function GameScreen() {
   const [isRecord, setIsRecord] = useState(false);
   const [showTutorial, setShowTutorial] = useState(false);
   const [glReady, setGlReady] = useState(false);
+  const [introDone, setIntroDone] = useState(false);
 
   const engineRef = useRef<RunnerEngine | null>(null);
   const modeRef = useRef<Mode>("menu");
@@ -39,11 +42,26 @@ export default function GameScreen() {
   const profileRef = useRef(profile);
   profileRef.current = profile;
 
+  // Audio: load players once, follow settings.
+  useEffect(() => {
+    audio.setSound(profile.sound);
+    audio.setMusic(profile.music);
+    if (profile.loaded) {
+      audio.setTrack(profile.musicTrack);
+      void audio.init();
+    }
+  }, [profile.sound, profile.music, profile.musicTrack, profile.loaded]);
+
+  useEffect(() => {
+    engineRef.current?.setShadows(profile.shadows);
+  }, [profile.shadows, glReady]);
+
   // Callbacks object is mutable so the engine always sees the latest closures.
   const callbacks = useRef<EngineCallbacks>({
     onHud: (s) => setHud(s),
     onGameOver: async (r) => {
       setResult(r);
+      audio.duckMusic();
       const { isRecord: rec } = await profileRef.current.recordRun(r);
       setIsRecord(rec);
       if (rec && profileRef.current.haptics && Platform.OS !== "web") {
@@ -52,6 +70,8 @@ export default function GameScreen() {
       setMode("gameover");
     },
     onEvent: (e: GameEvent) => {
+      const sfx = { crash: "crash", coin: "coin", jump: "jump", roll: "roll", lane: "swipe", powerup: "powerup", "shield-break": "shield" } as const;
+      audio.play(sfx[e]);
       if (!profileRef.current.haptics || Platform.OS === "web") return;
       if (e === "crash") Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error).catch(() => undefined);
       else if (e === "powerup" || e === "shield-break") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => undefined);
@@ -62,6 +82,7 @@ export default function GameScreen() {
   const onContextCreate = useCallback((gl: ExpoWebGLRenderingContext) => {
     engineRef.current?.dispose();
     engineRef.current = new RunnerEngine(gl, callbacks.current);
+    engineRef.current.setShadows(profileRef.current.shadows);
     setGlReady(true);
   }, []);
 
@@ -76,30 +97,37 @@ export default function GameScreen() {
     setShowTutorial(!profileRef.current.tutorialSeen);
     engine.start();
     setMode("playing");
+    audio.startMusic();
     if (profileRef.current.haptics && Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => undefined);
   }, []);
 
   const goHome = useCallback(() => {
     engineRef.current?.toMenu();
+    audio.pauseMusic();
     setMode("menu");
   }, []);
 
   const pause = useCallback(() => {
     engineRef.current?.pause();
+    audio.pauseMusic();
     setMode("paused");
   }, []);
 
   const resume = useCallback(() => {
     engineRef.current?.resume();
+    audio.startMusic();
     setMode("playing");
   }, []);
 
   // Pause automatically when the screen loses focus (navigating to leaderboard/settings).
   useFocusEffect(
     useCallback(() => {
+      // Coming back from Settings (track preview) or Leaderboard: music only plays during a run.
+      if (modeRef.current !== "playing") audio.pauseMusic();
       return () => {
         if (modeRef.current === "playing") {
           engineRef.current?.pause();
+          audio.pauseMusic();
           setMode("paused");
         }
       };
@@ -183,13 +211,7 @@ export default function GameScreen() {
         </View>
       </GestureDetector>
 
-      {!glReady ? (
-        <View style={styles.loading} testID="game-loading">
-          <Text style={styles.loadingText}>İstanbul yükleniyor…</Text>
-        </View>
-      ) : null}
-
-      {mode === "menu" ? (
+      {mode === "menu" && introDone ? (
         <MainMenu
           nickname={profile.nickname}
           bestScore={profile.bestScore}
@@ -216,14 +238,15 @@ export default function GameScreen() {
       {mode === "gameover" && result ? (
         <GameOverSheet result={result} isRecord={isRecord} bestScore={profile.bestScore} onRetry={startRun} onHome={goHome} />
       ) : null}
+
+      {/* Launch screen sits on top of everything until the 3D scene is ready (3–7 s). */}
+      {!introDone ? <IntroOverlay ready={glReady && profile.loaded} onDone={() => setIntroDone(true)} /> : null}
     </View>
   );
 }
 
 const useStyles = makeStyles((colors) => ({
   root: { flex: 1, backgroundColor: colors.surfaceInverse },
-  loading: { position: "absolute", left: 0, right: 0, top: 0, bottom: 0, alignItems: "center", justifyContent: "center", backgroundColor: colors.surfaceInverse },
-  loadingText: { fontFamily: fonts.display, fontSize: 20, color: colors.onSurfaceInverse },
   pauseScore: { fontFamily: fonts.textBold, fontSize: 18, color: colors.onSurface, textAlign: "center", marginBottom: spacing.sm },
   flex: { flex: 1 },
 }));

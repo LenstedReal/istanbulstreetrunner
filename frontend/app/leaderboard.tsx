@@ -1,7 +1,7 @@
 import Ionicons from "@react-native-vector-icons/ionicons";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "expo-router";
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { ActivityIndicator, FlatList, Pressable, ScrollView, Text, TextInput, View } from "react-native";
 import { KeyboardAvoidingView } from "react-native-keyboard-controller";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -46,12 +46,25 @@ export default function LeaderboardScreen() {
     queryKey: ["friends", playerId],
     queryFn: () => api.getFriends(playerId as string),
     enabled: !!playerId && tab === "friends",
+    retry: (count, err) => !(err instanceof ApiError && err.status === 404) && count < 2,
   });
   const globalQ = useQuery({
     queryKey: ["leaderboard", playerId],
     queryFn: () => api.leaderboard(playerId),
     enabled: tab === "global",
   });
+
+  // Stored player id no longer exists on the server -> recreate the online profile transparently.
+  useEffect(() => {
+    if (friendsQ.error instanceof ApiError && friendsQ.error.status === 404) void profile.recoverOnline();
+  }, [friendsQ.error, profile]);
+
+  // No online profile yet (first launch offline) -> try again when the tab opens.
+  useEffect(() => {
+    if (!playerId && profile.loaded) void profile.ensureOnline();
+  }, [playerId, profile.loaded, profile]);
+
+  const goBack = () => (router.canGoBack() ? router.back() : router.replace("/"));
 
   const addFriend = useMutation({
     mutationFn: async (c: string) => {
@@ -93,7 +106,7 @@ export default function LeaderboardScreen() {
     <View style={styles.root} testID="leaderboard-screen">
       <View style={[styles.header, { paddingTop: insets.top + spacing.sm }]}>
         <View style={styles.headerRow}>
-          <Pressable testID="leaderboard-back-button" accessibilityRole="button" onPress={() => router.back()} style={styles.back}>
+          <Pressable testID="leaderboard-back-button" accessibilityRole="button" onPress={goBack} style={styles.back}>
             <Ionicons name="chevron-back" size={26} color={colors.onSurface} />
           </Pressable>
           <Text style={styles.title}>Liderlik</Text>
