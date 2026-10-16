@@ -1,4 +1,8 @@
 {
+  "react-native-google-mobile-ads": {
+    "android_app_id": "ca-app-pub-4558868217074430~6140167741",
+    "ios_app_id": "ca-app-pub-3940256099942544~1458002511"
+  },
   "expo": {
     "name": "Istanbul Runner",
     "slug": "frontend",
@@ -44,7 +48,6 @@
       "expo-status-bar",
       "@react-native-vector-icons/ionicons",
       "expo-audio",
-      "react-native-google-mobile-ads",
       [
         "react-native-google-mobile-ads",
         {
