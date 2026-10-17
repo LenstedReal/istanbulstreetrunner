@@ -140,42 +140,9 @@ export class RunnerEngine {
     private gl: ExpoWebGLRenderingContext,
     private cb: EngineCallbacks,
   ) {
-    const w = gl.drawingBufferWidth;
-    const h = gl.drawingBufferHeight;
-    const fakeCanvas = {
-      width: w,
-      height: h,
-      clientWidth: w,
-      clientHeight: h,
-      style: {},
-      addEventListener: () => {},
-      removeEventListener: () => {},
-      getContext: () => gl,
-    };
-    const canvas = ((gl as unknown as { canvas?: HTMLCanvasElement }).canvas ?? fakeCanvas) as HTMLCanvasElement;
-    // expo-gl's native context inherits from a global `WebGLRenderingContext` shim, which
-    // makes three.js (r163+) believe it is WebGL 1 and throw. The context is really WebGL 2,
-    // so hide the global while the renderer is constructed.
-    const g = globalThis as unknown as { WebGLRenderingContext?: unknown };
-    const savedCtor = g.WebGLRenderingContext;
-    if (Platform.OS !== "web") g.WebGLRenderingContext = undefined;
-    try {
-      this.renderer = new THREE.WebGLRenderer({
-        canvas,
-        context: gl as unknown as WebGL2RenderingContext,
-        antialias: false,
-        powerPreference: "high-performance",
-      });
-    } finally {
-      g.WebGLRenderingContext = savedCtor;
-    }
-    this.renderer.setPixelRatio(1);
-    this.renderer.setSize(w, h, false);
-    this.renderer.setClearColor(SCENE.haze);
-    this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    this.renderer.toneMappingExposure = 1.08;
-    this.renderer.shadowMap.enabled = true;
-    this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    const w = Math.max(1, gl.drawingBufferWidth);
+    const h = Math.max(1, gl.drawingBufferHeight);
+    this.renderer = this.createRenderer(gl);
 
     this.scene.background = new THREE.Color(SCENE.haze);
     this.scene.fog = new THREE.Fog(SCENE.fog, 45, 160);
@@ -204,6 +171,91 @@ export class RunnerEngine {
     this.resetRun();
     this.updateCamera(1, true);
     this.loop(0);
+  }
+
+  /**
+   * Rebind the renderer when Expo GL recreates its native context. Keep this
+   * engine instance (and therefore score, distance, obstacles, lane, powerups,
+   * and collectibles) instead of constructing a fresh engine and resetting the run.
+   */
+  replaceContext(gl: ExpoWebGLRenderingContext) {
+    if (this.disposed) return;
+
+    if (this.gl === gl) {
+      this.lastTime = 0;
+      this.renderFrame();
+      if (this.phase === "running" || this.phase === "crashing" || this.phase === "idle") this.ensureLoop();
+      return;
+    }
+
+    this.stopLoop();
+    const previousRenderer = this.renderer;
+    // Create the replacement before disposing the current renderer so a failed
+    // renderer construction does not leave the engine without a usable renderer.
+    const nextRenderer = this.createRenderer(gl);
+    this.gl = gl;
+    this.renderer = nextRenderer;
+
+    const w = Math.max(1, gl.drawingBufferWidth);
+    const h = Math.max(1, gl.drawingBufferHeight);
+    this.camera.aspect = w / h;
+    this.camera.updateProjectionMatrix();
+    this.lastTime = 0;
+    this.lastIdleFrame = -Infinity;
+
+    // A lost native context can make disposing the old renderer throw. The new
+    // renderer is already active, so cleanup failure must not discard the run.
+    try {
+      previousRenderer.dispose();
+    } catch {
+      // Ignore a stale/lost GL context during replacement.
+    }
+
+    this.renderFrame();
+    if (this.phase === "running" || this.phase === "crashing" || this.phase === "idle") this.ensureLoop();
+  }
+
+  private createRenderer(gl: ExpoWebGLRenderingContext): THREE.WebGLRenderer {
+    const w = Math.max(1, gl.drawingBufferWidth);
+    const h = Math.max(1, gl.drawingBufferHeight);
+    const fakeCanvas = {
+      width: w,
+      height: h,
+      clientWidth: w,
+      clientHeight: h,
+      style: {},
+      addEventListener: () => {},
+      removeEventListener: () => {},
+      getContext: () => gl,
+    };
+    const canvas = ((gl as unknown as { canvas?: HTMLCanvasElement }).canvas ?? fakeCanvas) as HTMLCanvasElement;
+
+    // expo-gl's native context inherits from a global `WebGLRenderingContext` shim,
+    // which makes three.js (r163+) believe it is WebGL 1 and throw. The context is
+    // really WebGL 2, so hide the global while the renderer is constructed.
+    const g = globalThis as unknown as { WebGLRenderingContext?: unknown };
+    const savedCtor = g.WebGLRenderingContext;
+    let renderer: THREE.WebGLRenderer;
+    if (Platform.OS !== "web") g.WebGLRenderingContext = undefined;
+    try {
+      renderer = new THREE.WebGLRenderer({
+        canvas,
+        context: gl as unknown as WebGL2RenderingContext,
+        antialias: false,
+        powerPreference: "high-performance",
+      });
+    } finally {
+      g.WebGLRenderingContext = savedCtor;
+    }
+
+    renderer.setPixelRatio(1);
+    renderer.setSize(w, h, false);
+    renderer.setClearColor(SCENE.haze);
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    renderer.toneMappingExposure = 1.08;
+    renderer.shadowMap.enabled = true;
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    return renderer;
   }
 
   // ------------------------------------------------------------------ control

@@ -117,8 +117,14 @@ export default function GameScreen() {
   });
 
   const onContextCreate = useCallback((gl: ExpoWebGLRenderingContext) => {
-    engineRef.current?.dispose();
-    engineRef.current = new RunnerEngine(gl, callbacks.current);
+    // Expo GL may recreate its native context when the Settings modal is shown
+    // or dismissed. Rebind the renderer on the existing engine instead of
+    // disposing the engine and losing the active run state.
+    if (engineRef.current) {
+      engineRef.current.replaceContext(gl);
+    } else {
+      engineRef.current = new RunnerEngine(gl, callbacks.current);
+    }
     engineRef.current.setShadows(profileRef.current.shadows);
     setGlReady(true);
   }, []);
@@ -205,16 +211,15 @@ export default function GameScreen() {
     setMode("playing");
   }, []);
 
-  // Set the return intent synchronously before navigation starts. Relying only
-  // on the focus-effect cleanup can race the native stack transition, leaving
-  // the engine paused without a matching resume when Settings closes.
+  // Set the return intent before the native modal transition begins. The run
+  // is paused but not reset, so returning from Settings can continue this run.
   const openSettings = useCallback(() => {
     const currentMode = modeRef.current;
     if (currentMode === "playing") {
+      resumeAfterRouteRef.current = true;
       engineRef.current?.pause();
       audio.pauseMusic();
       setMode("paused");
-      resumeAfterRouteRef.current = true;
     } else if (currentMode === "paused") {
       resumeAfterRouteRef.current = true;
       audio.pauseMusic();
