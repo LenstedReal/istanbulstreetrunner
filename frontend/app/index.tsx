@@ -200,9 +200,29 @@ export default function GameScreen() {
 
   const resume = useCallback(() => {
     engineRef.current?.resume();
-    audio.startMusic();
+    if (profileRef.current.music) audio.startMusic();
+    else audio.pauseMusic();
     setMode("playing");
   }, []);
+
+  // Set the return intent synchronously before navigation starts. Relying only
+  // on the focus-effect cleanup can race the native stack transition, leaving
+  // the engine paused without a matching resume when Settings closes.
+  const openSettings = useCallback(() => {
+    const currentMode = modeRef.current;
+    if (currentMode === "playing") {
+      engineRef.current?.pause();
+      audio.pauseMusic();
+      setMode("paused");
+      resumeAfterRouteRef.current = true;
+    } else if (currentMode === "paused") {
+      resumeAfterRouteRef.current = true;
+      audio.pauseMusic();
+    } else {
+      resumeAfterRouteRef.current = false;
+    }
+    router.push("/settings");
+  }, [router]);
 
   // Preserve a run while visiting Settings from gameplay or the pause sheet.
   useFocusEffect(
@@ -321,7 +341,7 @@ export default function GameScreen() {
           adBusy={adBusy}
           onPlay={startRun}
           onLeaderboard={() => router.push("/leaderboard")}
-          onSettings={() => router.push("/settings")}
+          onSettings={openSettings}
         />
       ) : null}
 
@@ -332,7 +352,7 @@ export default function GameScreen() {
         <Sheet title="Duraklatıldı" testID="pause-sheet">
           <Text style={styles.pauseScore}>Skor: {hud.score.toLocaleString("tr-TR")}</Text>
           <View style={styles.pauseGear}>
-            <ChunkyButton testID="pause-settings-button" icon="settings-sharp" round size="lg" variant="neutral" onPress={() => router.push("/settings")} />
+            <ChunkyButton testID="pause-settings-button" icon="settings-sharp" round size="lg" variant="neutral" onPress={openSettings} />
           </View>
           <SheetActions>
             <ChunkyButton testID="pause-home-button" label="Ana Menü" icon="home" variant="neutral" onPress={goHome} style={styles.flex} />
