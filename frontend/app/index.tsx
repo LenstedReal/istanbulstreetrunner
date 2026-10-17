@@ -15,7 +15,7 @@ import { MainMenu } from "@/src/components/game/MainMenu";
 import { ReviveSheet } from "@/src/components/game/ReviveSheet";
 import { Sheet, SheetActions } from "@/src/components/game/Sheet";
 import { TutorialOverlay } from "@/src/components/game/TutorialOverlay";
-import { EngineCallbacks, GameEvent, GameInput, HudState, RunResult, RunnerEngine } from "@/src/game/engine";
+import { EngineCallbacks, GameEvent, GameInput, HudState, RunResult, RunnerEngine, getSessionShadowMode } from "@/src/game/engine";
 import { MAX_REVIVES, reviveCost, useProfile } from "@/src/profile";
 import { makeStyles } from "@/src/theme";
 import { fonts, spacing } from "@/src/tokens";
@@ -81,7 +81,9 @@ export default function GameScreen() {
   }, [profile.sound, profile.music, profile.musicTrack, profile.loaded]);
 
   useEffect(() => {
-    engineRef.current?.setShadows(profile.shadows);
+    // Turning shadows off applies immediately. Turning them back on is saved as
+    // the next-launch preference to avoid Expo GL's live drawBuffers crash.
+    if (!profile.shadows) engineRef.current?.setShadows(false);
   }, [profile.shadows, glReady]);
 
   // Callbacks object is mutable so the engine always sees the latest closures.
@@ -123,9 +125,15 @@ export default function GameScreen() {
     if (engineRef.current) {
       engineRef.current.replaceContext(gl);
     } else {
-      engineRef.current = new RunnerEngine(gl, callbacks.current);
+      engineRef.current = new RunnerEngine(
+        gl,
+        callbacks.current,
+        getSessionShadowMode(profileRef.current.shadows),
+      );
     }
-    engineRef.current.setShadows(profileRef.current.shadows);
+    // Honor a saved "off" preference immediately, but never enable shadows on a
+    // live renderer merely because Settings was opened or the GL context changed.
+    if (!profileRef.current.shadows) engineRef.current.setShadows(false);
     setGlReady(true);
   }, []);
 

@@ -88,6 +88,17 @@ const shuffle = <T,>(arr: T[]) => {
   return arr;
 };
 
+// Session runtime state is intentionally separate from the saved preference.
+// Expo GL can crash when shadows are enabled again on a live renderer; after the
+// user turns them off, keep them off for this JS session and apply a saved "on"
+// preference when the app process starts fresh. This also survives route remounts.
+let sessionShadowMode: boolean | null = null;
+
+export function getSessionShadowMode(preference: boolean): boolean {
+  if (sessionShadowMode === null) sessionShadowMode = preference;
+  return sessionShadowMode;
+}
+
 export class RunnerEngine {
   private renderer: THREE.WebGLRenderer;
   private scene = new THREE.Scene();
@@ -139,10 +150,12 @@ export class RunnerEngine {
   constructor(
     private gl: ExpoWebGLRenderingContext,
     private cb: EngineCallbacks,
+    shadowsEnabled: boolean = true,
   ) {
+    sessionShadowMode = shadowsEnabled;
     const w = Math.max(1, gl.drawingBufferWidth);
     const h = Math.max(1, gl.drawingBufferHeight);
-    this.renderer = this.createRenderer(gl);
+    this.renderer = this.createRenderer(gl, shadowsEnabled);
 
     this.scene.background = new THREE.Color(SCENE.haze);
     this.scene.fog = new THREE.Fog(SCENE.fog, 45, 160);
@@ -151,7 +164,7 @@ export class RunnerEngine {
 
     this.scene.add(new THREE.HemisphereLight(SCENE.hemiSky, SCENE.hemiGround, 0.9));
     this.sun = new THREE.DirectionalLight(SCENE.sun, 1.6);
-    this.sun.castShadow = true;
+    this.sun.castShadow = shadowsEnabled;
     this.sun.shadow.mapSize.set(1024, 1024);
     this.sun.shadow.bias = -0.0008;
     this.sun.shadow.normalBias = 0.03;
@@ -190,11 +203,15 @@ export class RunnerEngine {
 
     this.stopLoop();
     const previousRenderer = this.renderer;
+    const shadowsEnabled = previousRenderer.shadowMap.enabled;
     // Create the replacement before disposing the current renderer so a failed
     // renderer construction does not leave the engine without a usable renderer.
-    const nextRenderer = this.createRenderer(gl);
+    // Preserve the active session state; do not accidentally re-enable shadows
+    // just because Expo delivered a new GL context.
+    const nextRenderer = this.createRenderer(gl, shadowsEnabled);
     this.gl = gl;
     this.renderer = nextRenderer;
+    this.sun.castShadow = shadowsEnabled;
 
     const w = Math.max(1, gl.drawingBufferWidth);
     const h = Math.max(1, gl.drawingBufferHeight);
@@ -215,7 +232,7 @@ export class RunnerEngine {
     if (this.phase === "running" || this.phase === "crashing" || this.phase === "idle") this.ensureLoop();
   }
 
-  private createRenderer(gl: ExpoWebGLRenderingContext): THREE.WebGLRenderer {
+  private createRenderer(gl: ExpoWebGLRenderingContext, shadowsEnabled: boolean = true): THREE.WebGLRenderer {
     const w = Math.max(1, gl.drawingBufferWidth);
     const h = Math.max(1, gl.drawingBufferHeight);
     const fakeCanvas = {
@@ -253,7 +270,7 @@ export class RunnerEngine {
     renderer.setClearColor(SCENE.haze);
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
     renderer.toneMappingExposure = 1.08;
-    renderer.shadowMap.enabled = true;
+    renderer.shadowMap.enabled = shadowsEnabled;
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     return renderer;
   }
@@ -329,11 +346,21 @@ export class RunnerEngine {
     this.emitHud();
   }
 
-  /** Shadows are the most expensive effect; low-end devices can switch them off. */
+  /**
+   * Disabling shadows is safe at runtime. Re-enabling them on an existing Expo GL
+   * renderer can crash inside drawBuffers ("WeakMap key must be an Object"). Keep
+   * the saved preference, but defer activation until a fresh app JS session.
+   */
   setShadows(on: boolean) {
-    if (this.renderer.shadowMap.enabled === on) return;
+    // A saved preference may be "on" while this session deliberately remains off.
+    if (on && !this.renderer.shadowMap.enabled) return;
+
+    const changed = this.renderer.shadowMap.enabled !== on || this.sun.castShadow !== on;
     this.renderer.shadowMap.enabled = on;
     this.sun.castShadow = on;
+    sessionShadowMode = on;
+    if (!changed) return;
+
     this.scene.traverse((o) => {
       const mat = (o as THREE.Mesh).material as THREE.Material | THREE.Material[] | undefined;
       if (!mat) return;

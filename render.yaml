@@ -1,0 +1,17 @@
+services:
+  - type: web
+    name: istanbulstreetrunner-api
+    runtime: python
+    plan: free
+    region: frankfurt
+    rootDir: backend
+    buildCommand: pip install -r requirements-api.txt
+    startCommand: uvicorn server:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /health
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.12.10
+      - key: MONGO_URL
+        sync: false
+      - key: DB_NAME
+        value: istanbulstreetrunner
