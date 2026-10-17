@@ -1,4 +1,6 @@
-const BASE = `${process.env.EXPO_PUBLIC_BACKEND_URL}/api`;
+const BACKEND_URL = process.env.EXPO_PUBLIC_BACKEND_URL?.trim().replace(/\/$/, "");
+const BASE = BACKEND_URL ? `${BACKEND_URL}/api` : null;
+const REQUEST_TIMEOUT_MS = 12_000;
 
 export interface PlayerOut {
   id: string;
@@ -27,10 +29,27 @@ export class ApiError extends Error {
 }
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
-  const res = await fetch(`${BASE}${path}`, {
-    ...init,
-    headers: { "Content-Type": "application/json", ...(init?.headers ?? {}) },
-  });
+  if (!BASE) {
+    throw new ApiError(0, "Çevrimiçi servis yapılandırılmamış. EXPO_PUBLIC_BACKEND_URL ayarlanmalı.");
+  }
+
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+  let res: Response;
+  try {
+    res = await fetch(`${BASE}${path}`, {
+      ...init,
+      signal: controller.signal,
+      headers: { "Content-Type": "application/json", ...(init?.headers ?? {}) },
+    });
+  } catch (error) {
+    if (controller.signal.aborted) {
+      throw new ApiError(408, "Sunucu zamanında yanıt vermedi. Lütfen tekrar dene.");
+    }
+    throw new ApiError(0, "Sunucuya bağlanılamadı. İnternet bağlantını kontrol et.");
+  } finally {
+    clearTimeout(timeout);
+  }
   if (!res.ok) {
     let detail = `Sunucu hatası (${res.status})`;
     try {

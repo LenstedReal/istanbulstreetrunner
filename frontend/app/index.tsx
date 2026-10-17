@@ -46,6 +46,24 @@ export default function GameScreen() {
   const profileRef = useRef(profile);
   profileRef.current = profile;
   const revivesRef = useRef(0);
+  const pendingInterstitialRef = useRef(false);
+
+  const maybeShowInterstitial = useCallback(async () => {
+    if (!pendingInterstitialRef.current) return;
+    if (profileRef.current.adFree || !ads.available) {
+      pendingInterstitialRef.current = false;
+      return;
+    }
+    pendingInterstitialRef.current = false;
+    setAdBusy(true);
+    try {
+      await ads.showInterstitial();
+    } catch {
+      // A failed ad must never block the game or the result screen.
+    } finally {
+      setAdBusy(false);
+    }
+  }, []);
 
   useEffect(() => {
     void ads.initialize();
@@ -84,6 +102,7 @@ export default function GameScreen() {
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => undefined);
       }
       setMode("gameover");
+      void maybeShowInterstitial();
     },
     onEvent: (e: GameEvent) => {
       const sfx = { crash: "crash", coin: "coin", key: "powerup", jump: "jump", roll: "roll", lane: "swipe", powerup: "powerup", "shield-break": "shield" } as const;
@@ -120,20 +139,15 @@ export default function GameScreen() {
     if (profileRef.current.haptics) Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => undefined);
   }, []);
 
-  /** Oyna: every 3rd play shows an interstitial first (skipped for ad-free members). */
-  const startRun = useCallback(async () => {
-    if (adBusy) return;
-    const due = await profileRef.current.registerPlay();
-    if (due && !profileRef.current.adFree && ads.available) {
-      setAdBusy(true);
-      try {
-        await ads.showInterstitial();
-      } finally {
-        setAdBusy(false);
-      }
-    }
+  /** Start immediately; interstitials are deferred until the run has ended. */
+  const startRun = useCallback(() => {
     beginRun();
-  }, [adBusy, beginRun]);
+    void profileRef.current.registerPlay().then((due) => {
+      if (!due) return;
+      pendingInterstitialRef.current = true;
+      if (modeRef.current === "gameover") void maybeShowInterstitial();
+    }).catch(() => undefined);
+  }, [beginRun, maybeShowInterstitial]);
 
   const reviveNow = useCallback(() => {
     revivesRef.current += 1;

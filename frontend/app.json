@@ -1,8 +1,4 @@
 {
-  "react-native-google-mobile-ads": {
-    "android_app_id": "ca-app-pub-4558868217074430~6140167741",
-    "ios_app_id": "ca-app-pub-3940256099942544~1458002511"
-  },
   "expo": {
     "name": "Istanbul Runner",
     "slug": "frontend",
@@ -56,7 +52,8 @@
           "userTrackingUsageDescription": "Size daha uygun reklamlar göstermek için kullanılır"
         }
       ],
-      "./plugins/withAndroidBuildConfig.js"
+      "./plugins/withAndroidBuildConfig.js",
+      "expo-asset"
     ],
     "experiments": {
       "typedRoutes": true

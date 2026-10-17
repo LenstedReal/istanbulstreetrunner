@@ -47,6 +47,17 @@ jobs:
         working-directory: frontend
         run: npm ci
 
+      - name: Configure public backend URL
+        working-directory: frontend
+        env:
+          EXPO_PUBLIC_BACKEND_URL: ${{ vars.EXPO_PUBLIC_BACKEND_URL }}
+        run: |
+          if [ -n "$EXPO_PUBLIC_BACKEND_URL" ]; then
+            printf 'EXPO_PUBLIC_BACKEND_URL=%s\n' "$EXPO_PUBLIC_BACKEND_URL" > .env.production
+          else
+            echo "::warning::Repository variable EXPO_PUBLIC_BACKEND_URL is not set; online features will report a configuration error."
+          fi
+
       - name: Generate Android project
         working-directory: frontend
         run: npx expo prebuild --clean --platform android --no-install

@@ -209,19 +209,30 @@ export class RunnerEngine {
   start() {
     this.resetRun();
     this.phase = "running";
+    this.ensureLoop();
   }
 
   pause() {
-    if (this.phase === "running") this.phase = "paused";
+    if (this.phase === "running") {
+      this.phase = "paused";
+      this.stopLoop();
+      this.renderFrame();
+    }
   }
 
   resume() {
-    if (this.phase === "paused") this.phase = "running";
+    if (this.phase === "paused") {
+      this.phase = "running";
+      this.lastTime = 0;
+      this.ensureLoop();
+    }
   }
 
   toMenu() {
     this.resetRun();
     this.phase = "idle";
+    this.stopLoop();
+    this.renderFrame();
   }
 
   isRunning() {
@@ -310,8 +321,26 @@ export class RunnerEngine {
 
   dispose() {
     this.disposed = true;
-    cancelAnimationFrame(this.raf);
+    this.stopLoop();
     this.renderer.dispose();
+  }
+
+  private ensureLoop() {
+    if (this.disposed || this.raf !== 0) return;
+    this.lastTime = 0;
+    this.raf = requestAnimationFrame(this.loop);
+  }
+
+  private stopLoop() {
+    if (this.raf !== 0) cancelAnimationFrame(this.raf);
+    this.raf = 0;
+    this.lastTime = 0;
+  }
+
+  private renderFrame() {
+    if (this.disposed) return;
+    this.renderer.render(this.scene, this.camera);
+    this.gl.endFrameEXP?.();
   }
 
   // ------------------------------------------------------------------- reset
@@ -355,7 +384,7 @@ export class RunnerEngine {
   // -------------------------------------------------------------------- loop
   private loop = (time: number) => {
     if (this.disposed) return;
-    this.raf = requestAnimationFrame(this.loop);
+    this.raf = 0;
     const dtRaw = this.lastTime ? (time - this.lastTime) / 1000 : 1 / 60;
     this.lastTime = time;
     const dt = Math.min(dtRaw, 1 / 30);
@@ -387,6 +416,12 @@ export class RunnerEngine {
 
     this.renderer.render(this.scene, this.camera);
     this.gl.endFrameEXP?.();
+
+    // Idle and paused scenes are static. Keep the last frame visible without
+    // burning CPU/GPU every refresh; active/crash animations keep their RAF.
+    if (this.phase === "running" || this.phase === "crashing") {
+      this.raf = requestAnimationFrame(this.loop);
+    }
   };
 
   private step(dt: number) {
