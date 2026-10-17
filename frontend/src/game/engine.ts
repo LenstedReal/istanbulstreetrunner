@@ -103,6 +103,7 @@ export class RunnerEngine {
   private clock = 0;
   private hudAcc = 0;
   private disposed = false;
+  private lastIdleFrame = -Infinity;
 
   // Run state
   private elapsed = 0;
@@ -233,6 +234,7 @@ export class RunnerEngine {
     this.phase = "idle";
     this.stopLoop();
     this.renderFrame();
+    this.ensureLoop();
   }
 
   isRunning() {
@@ -387,6 +389,12 @@ export class RunnerEngine {
   private loop = (time: number) => {
     if (this.disposed) return;
     this.raf = 0;
+    // The menu scene remains animated, but renders at about 30 FPS to limit GPU use.
+    if (this.phase === "idle" && time - this.lastIdleFrame < 1000 / 30) {
+      this.raf = requestAnimationFrame(this.loop);
+      return;
+    }
+    if (this.phase === "idle") this.lastIdleFrame = time;
     const dtRaw = this.lastTime ? (time - this.lastTime) / 1000 : 1 / 60;
     this.lastTime = time;
     const dt = Math.min(dtRaw, 1 / 30);
@@ -419,9 +427,8 @@ export class RunnerEngine {
     this.renderer.render(this.scene, this.camera);
     this.gl.endFrameEXP?.();
 
-    // Idle and paused scenes are static. Keep the last frame visible without
-    // burning CPU/GPU every refresh; active/crash animations keep their RAF.
-    if (this.phase === "running" || this.phase === "crashing") {
+    // Keep the animated menu scene alive; paused/game-over scenes remain static.
+    if (this.phase === "running" || this.phase === "crashing" || this.phase === "idle") {
       this.raf = requestAnimationFrame(this.loop);
     }
   };

@@ -46,6 +46,7 @@ export default function GameScreen() {
   const profileRef = useRef(profile);
   profileRef.current = profile;
   const revivesRef = useRef(0);
+  const resumeAfterRouteRef = useRef(false);
   const pendingInterstitialRef = useRef(false);
 
   const maybeShowInterstitial = useCallback(async () => {
@@ -203,16 +204,32 @@ export default function GameScreen() {
     setMode("playing");
   }, []);
 
-  // Pause automatically when the screen loses focus (navigating to leaderboard/settings).
+  // Preserve a run while visiting Settings from gameplay or the pause sheet.
   useFocusEffect(
     useCallback(() => {
-      // Coming back from Settings (track preview) or Leaderboard: music only plays during a run.
-      if (modeRef.current !== "playing") audio.pauseMusic();
+      if (resumeAfterRouteRef.current && (modeRef.current === "paused" || modeRef.current === "playing")) {
+        resumeAfterRouteRef.current = false;
+        engineRef.current?.resume();
+        setMode("playing");
+        if (profileRef.current.music) audio.startMusic();
+        else audio.pauseMusic();
+      } else if (modeRef.current !== "playing") {
+        audio.pauseMusic();
+      }
+
       return () => {
-        if (modeRef.current === "playing") {
+        const modeAtBlur = modeRef.current;
+        if (modeAtBlur === "playing") {
+          resumeAfterRouteRef.current = true;
           engineRef.current?.pause();
           audio.pauseMusic();
           setMode("paused");
+        } else if (modeAtBlur === "paused") {
+          // Settings opened from the pause sheet: resume the same run on return.
+          resumeAfterRouteRef.current = true;
+          audio.pauseMusic();
+        } else {
+          resumeAfterRouteRef.current = false;
         }
       };
     }, []),
