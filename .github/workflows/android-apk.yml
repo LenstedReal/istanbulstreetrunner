@@ -62,6 +62,10 @@ jobs:
         working-directory: frontend
         run: npx expo prebuild --clean --platform android --no-install
 
+      - name: Patch Google Mobile Ads compileSdk
+        working-directory: frontend
+        run: |
+          node -e "const fs=require('fs'); const p='node_modules/react-native-google-mobile-ads/android/build.gradle'; let s=fs.readFileSync(p,'utf8'); const m=s.match(/android\\s*\\{/); if(!m) throw Error('Android bloğu bulunamadı'); const i=m.index+m[0].length; let depth=1,j=i; for(;j<s.length&&depth;j++){if(s[j]==='{')depth++;else if(s[j]==='}')depth--;} const b=s.slice(i,j-1); if(!/^\\s*compileSdk(?:Version)?\\s+/m.test(b)) s=s.slice(0,i)+'\\n    compileSdk 36\\n'+s.slice(i); fs.writeFileSync(p,s); console.log('Google Mobile Ads compileSdk kontrol edildi');"
       - name: Build release APK
         working-directory: frontend/android
         run: |
