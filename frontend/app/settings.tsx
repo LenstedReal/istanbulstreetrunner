@@ -33,23 +33,31 @@ export default function SettingsScreen() {
 
   const [adBusy, setAdBusy] = useState(false);
   const [trackMsg, setTrackMsg] = useState<string | null>(null);
+  const changingTrackRef = React.useRef(false);
 
   /** First change is free; later changes need a rewarded ad unless the player is ad-free. */
   const changeTrack = async (id: string) => {
-    if (id === profile.musicTrack) return;
-    const needsAd = !profile.adFree && profile.songChanges >= 1;
-    if (needsAd && ads.available) {
-      setAdBusy(true);
-      const earned = await ads.showRewarded();
-      setAdBusy(false);
-      if (!earned) {
-        setTrackMsg("Reklam tamamlanmadı, parça değişmedi");
-        return;
+    if (changingTrackRef.current || id === profile.musicTrack) return;
+    changingTrackRef.current = true;
+    setAdBusy(true);
+    try {
+      const needsAd = !profile.adFree && profile.songChanges >= 1;
+      if (needsAd && ads.available) {
+        const earned = await ads.showRewarded();
+        if (!earned) {
+          setTrackMsg("Reklam tamamlanmadı, parça değişmedi");
+          return;
+        }
       }
+      setTrackMsg(null);
+      await profile.setMusicTrack(id);
+      await profile.registerSongChange();
+    } catch {
+      setTrackMsg("Parça değiştirilemedi. Tekrar dene.");
+    } finally {
+      changingTrackRef.current = false;
+      setAdBusy(false);
     }
-    setTrackMsg(null);
-    await profile.setMusicTrack(id);
-    await profile.registerSongChange();
   };
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);

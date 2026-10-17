@@ -163,18 +163,23 @@ export default function GameScreen() {
   }, [reviveNow]);
 
   const reviveWithAd = useCallback(async () => {
+    if (adBusy) return;
     setAdBusy(true);
     try {
       const earned = await ads.showRewarded();
       if (earned) {
-        // The ad grants exactly the keys this revive costs, then spends them.
-        await profileRef.current.addKeys(reviveCost(revivesRef.current));
-        await reviveWithKeys();
+        // Grant and spend the revive cost only after the rewarded callback confirms it.
+        const cost = reviveCost(revivesRef.current);
+        await profileRef.current.addKeys(cost);
+        const paid = await profileRef.current.spendKeys(cost);
+        if (paid) reviveNow();
       }
+    } catch (error) {
+      console.warn("[ads] rewarded revive failed", error);
     } finally {
       setAdBusy(false);
     }
-  }, [reviveWithKeys]);
+  }, [adBusy, reviveNow]);
 
   const giveUp = useCallback(() => {
     engineRef.current?.endRun();

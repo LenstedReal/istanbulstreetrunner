@@ -270,6 +270,8 @@ export class RunnerEngine {
     this.invulnerable = 2.0;
     this.speed = Math.max(START_SPEED, this.speed * 0.8);
     this.phase = "running";
+    this.lastTime = 0;
+    this.ensureLoop();
     this.emitHud();
   }
 

@@ -45,6 +45,7 @@ class AudioManager {
   private wantPlaying = false;
   private ducked = false;
   private loopTimer: ReturnType<typeof setInterval> | null = null;
+  private fadeTimer: ReturnType<typeof setInterval> | null = null;
   private fading = false;
   private ready = false;
   soundOn = true;
@@ -79,7 +80,21 @@ class AudioManager {
   private loadTrack(id: string) {
     const track = MUSIC_TRACKS.find((t) => t.id === id) ?? MUSIC_TRACKS[0];
     this.trackId = track.id;
-    this.music?.forEach((p) => p.remove());
+    this.clearFade();
+    this.music?.forEach((p) => {
+      try {
+        p.pause();
+        p.seekTo(0);
+      } catch {
+        /* player may already be released */
+      }
+      try {
+        p.remove();
+      } catch {
+        /* player may already be released */
+      }
+    });
+    this.music = null;
     const a = createAudioPlayer(track.source);
     const b = createAudioPlayer(track.source);
     a.volume = this.targetVolume();
@@ -92,6 +107,16 @@ class AudioManager {
 
   private targetVolume() {
     return this.ducked ? MUSIC_VOLUME * 0.4 : MUSIC_VOLUME;
+  }
+
+  private clearFade(resetVolumes = false) {
+    if (this.fadeTimer) clearInterval(this.fadeTimer);
+    this.fadeTimer = null;
+    this.fading = false;
+    if (resetVolumes && this.music) {
+      this.music[this.active].volume = this.targetVolume();
+      this.music[1 - this.active].volume = 0;
+    }
   }
 
   /** Crossfade into the second player shortly before the first one ends. */
@@ -112,14 +137,15 @@ class AudioManager {
     }
     const steps = Math.round((CROSSFADE_S * 1000) / 60);
     let i = 0;
-    const fade = setInterval(() => {
+    this.fadeTimer = setInterval(() => {
       i++;
       const k = Math.min(1, i / steps);
       const vol = this.targetVolume();
       cur.volume = vol * (1 - k);
       next.volume = vol * k;
       if (k >= 1) {
-        clearInterval(fade);
+        if (this.fadeTimer) clearInterval(this.fadeTimer);
+        this.fadeTimer = null;
         try {
           cur.pause();
           cur.seekTo(0);
@@ -173,6 +199,7 @@ class AudioManager {
 
   pauseMusic() {
     this.wantPlaying = false;
+    this.clearFade(true);
     try {
       this.music?.forEach((p) => p.pause());
     } catch {
@@ -195,6 +222,7 @@ class AudioManager {
     if (on) {
       if (this.wantPlaying) this.startMusic();
     } else {
+      this.clearFade(true);
       try {
         this.music?.forEach((p) => p.pause());
       } catch {
@@ -204,6 +232,7 @@ class AudioManager {
   }
 
   dispose() {
+    this.clearFade();
     if (this.loopTimer) clearInterval(this.loopTimer);
     this.loopTimer = null;
     this.sfx.forEach((players) => players.forEach((p) => p.remove()));
