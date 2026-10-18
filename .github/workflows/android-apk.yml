@@ -66,16 +66,61 @@ jobs:
         working-directory: frontend
         run: |
           node -e "const fs=require('fs'); const p='node_modules/react-native-google-mobile-ads/android/build.gradle'; let s=fs.readFileSync(p,'utf8'); const m=s.match(/android\\s*\\{/); if(!m) throw Error('Android bloğu bulunamadı'); const i=m.index+m[0].length; let depth=1,j=i; for(;j<s.length&&depth;j++){if(s[j]==='{')depth++;else if(s[j]==='}')depth--;} const b=s.slice(i,j-1); if(!/^\\s*compileSdk(?:Version)?\\s+/m.test(b)) s=s.slice(0,i)+'\\n    compileSdk 36\\n'+s.slice(i); fs.writeFileSync(p,s); console.log('Google Mobile Ads compileSdk kontrol edildi');"
+      - name: Configure Android upload signing
+        working-directory: frontend/android
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          set -eu
+          test -n "$ANDROID_KEYSTORE_BASE64"
+          test -n "$ANDROID_KEYSTORE_PASSWORD"
+          test -n "$ANDROID_KEY_ALIAS"
+          test -n "$ANDROID_KEY_PASSWORD"
+          printf '%s' "$ANDROID_KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/upload.jks"
+          cat >> app/build.gradle <<'GRADLE'
+
+          android {
+              signingConfigs {
+                  release {
+                      storeFile file(System.getenv("RUNNER_TEMP") + "/upload.jks")
+                      storePassword System.getenv("ANDROID_KEYSTORE_PASSWORD")
+                      keyAlias System.getenv("ANDROID_KEY_ALIAS")
+                      keyPassword System.getenv("ANDROID_KEY_PASSWORD")
+                  }
+              }
+              buildTypes {
+                  release {
+                      signingConfig signingConfigs.release
+                  }
+              }
+          }
+          GRADLE
+
       - name: Build release APK
         working-directory: frontend/android
         run: |
           chmod +x gradlew
           ./gradlew --no-daemon assembleRelease
 
+      - name: Build signed release AAB
+        working-directory: frontend/android
+        run: ./gradlew --no-daemon bundleRelease
+
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: istanbulstreetrunner-apk
           path: frontend/android/app/build/outputs/apk/release/*.apk
+          if-no-files-found: error
+          retention-days: 7
+
+      - name: Upload AAB
+        uses: actions/upload-artifact@v4
+        with:
+          name: istanbulstreetrunner-aab
+          path: frontend/android/app/build/outputs/bundle/release/*.aab
           if-no-files-found: error
           retention-days: 7
