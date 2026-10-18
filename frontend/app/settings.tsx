@@ -157,7 +157,7 @@ export default function SettingsScreen() {
           <View style={styles.divider} />
           <Text style={styles.rowTitle}>Parça seç</Text>
           <Text style={styles.help}>
-            {profile.adFree ? "Sınırsız parça değişimi" : profile.songChanges === 0 ? "İlk değişim ücretsiz, sonrası reklamla" : "Parça değiştirmek için reklam izle"}
+            {profile.adFree ? "Sınırsız parça değişimi" : "Parça değiştirmek için reklam izle"}
           </Text>
           {MUSIC_TRACKS.map((t) => {
             const active = t.id === profile.musicTrack;
@@ -195,7 +195,7 @@ export default function SettingsScreen() {
           <View style={styles.rowItem}>
             <View style={styles.rowText}>
               <Text style={styles.rowTitle}>Gölgeler</Text>
-              <Text style={styles.help}>Daha gerçekçi görüntü · Takılma olursa kapat</Text>
+              <Text style={styles.help}>Yeni nesil (120 Hz) cihazlarda önerilir · Grafik kalitesini artırır. Kapattıktan sonra yeniden açmak için oyunu yeniden başlat.</Text>
             </View>
             <Switch testID="settings-shadows-switch" value={profile.shadows} onValueChange={(v) => profile.setShadows(v)} trackColor={{ true: colors.info, false: colors.border }} thumbColor={colors.surfaceSecondary} />
           </View>
@@ -225,7 +225,7 @@ export default function SettingsScreen() {
           >
             <View style={styles.rowText}>
               <Text style={styles.rowTitle}>Titreşimi dene</Text>
-              <Text style={styles.help}>Hissetmiyorsan telefonun titreşim ayarını kontrol et</Text>
+              <Text style={styles.help}>Çalışmıyorsa telefon ayarlarından dokunsal geri bildirimi etkinleştir.</Text>
             </View>
             <Ionicons name="phone-portrait-outline" size={22} color={colors.info} />
           </Pressable>
@@ -276,7 +276,7 @@ export default function SettingsScreen() {
               </View>
             </View>
           ))}
-          <Text style={styles.help}>Tramvay ve sütunlar şeridi tamamen kapatır, şerit değiştir.</Text>
+          <Text style={styles.help}>Tramvaylar sana doğru geliyor, kaç!</Text>
         </View>
       </KeyboardAwareScrollView>
     </View>
