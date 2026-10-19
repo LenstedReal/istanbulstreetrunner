@@ -47,16 +47,25 @@ jobs:
         working-directory: frontend
         run: npm ci
 
-      - name: Configure public backend URL
+      - name: Configure public app environment
         working-directory: frontend
         env:
           EXPO_PUBLIC_BACKEND_URL: ${{ vars.EXPO_PUBLIC_BACKEND_URL }}
+          EXPO_PUBLIC_ADMOB_ANDROID_INTERSTITIAL: ${{ vars.EXPO_PUBLIC_ADMOB_ANDROID_INTERSTITIAL }}
+          EXPO_PUBLIC_ADMOB_ANDROID_REWARDED: ${{ vars.EXPO_PUBLIC_ADMOB_ANDROID_REWARDED }}
         run: |
+          set -eu
+          : > .env.production
           if [ -n "$EXPO_PUBLIC_BACKEND_URL" ]; then
-            printf 'EXPO_PUBLIC_BACKEND_URL=%s\n' "$EXPO_PUBLIC_BACKEND_URL" > .env.production
+            printf 'EXPO_PUBLIC_BACKEND_URL=%s\n' "$EXPO_PUBLIC_BACKEND_URL" >> .env.production
           else
-            echo "::warning::Repository variable EXPO_PUBLIC_BACKEND_URL is not set; online features will report a configuration error."
+            echo "::warning::Repository variable EXPO_PUBLIC_BACKEND_URL is not set; online features may not work."
           fi
+          test -n "$EXPO_PUBLIC_ADMOB_ANDROID_INTERSTITIAL"
+          test -n "$EXPO_PUBLIC_ADMOB_ANDROID_REWARDED"
+          printf 'EXPO_PUBLIC_ADMOB_ANDROID_INTERSTITIAL=%s\n' "$EXPO_PUBLIC_ADMOB_ANDROID_INTERSTITIAL" >> .env.production
+          printf 'EXPO_PUBLIC_ADMOB_ANDROID_REWARDED=%s\n' "$EXPO_PUBLIC_ADMOB_ANDROID_REWARDED" >> .env.production
+          echo "Backend and Android AdMob environment configured."
 
       - name: Generate Android project
         working-directory: frontend
