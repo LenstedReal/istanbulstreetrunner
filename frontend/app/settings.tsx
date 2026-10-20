@@ -2,7 +2,7 @@ import Ionicons from "@react-native-vector-icons/ionicons";
 import * as Haptics from "expo-haptics";
 import { useRouter } from "expo-router";
 import React, { useEffect, useState } from "react";
-import { Pressable, Switch, Text, TextInput, View } from "react-native";
+import { Linking, Pressable, Switch, Text, TextInput, View } from "react-native";
 import { KeyboardAwareScrollView } from "react-native-keyboard-controller";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
@@ -10,6 +10,7 @@ import { ads } from "@/src/ads/ads";
 import { audio, MUSIC_TRACKS } from "@/src/audio";
 import { ChunkyButton } from "@/src/components/ChunkyButton";
 import { useProfile } from "@/src/profile";
+import Purchases, { configureRevenueCat, isPremium } from "@/src/subscription";
 import { makeStyles, useTheme } from "@/src/theme";
 import { fonts, radius, spacing } from "@/src/tokens";
 
@@ -62,6 +63,8 @@ export default function SettingsScreen() {
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
   const [confirmReset, setConfirmReset] = useState(false);
+  const [subscriptionBusy, setSubscriptionBusy] = useState(false);
+  const [subscriptionMsg, setSubscriptionMsg] = useState<string | null>(null);
 
   const save = async () => {
     const v = nick.trim();
@@ -77,6 +80,61 @@ export default function SettingsScreen() {
       setMsg("Yerelde kaydedildi, sunucuya ulaşılamadı");
     } finally {
       setSaving(false);
+    }
+  };
+
+  const onSubscriptionPress = async () => {
+    if (subscriptionBusy) return;
+    setSubscriptionBusy(true);
+    setSubscriptionMsg(null);
+    try {
+      if (profile.adFree) {
+        await Linking.openURL("https://play.google.com/store/account/subscriptions");
+        return;
+      }
+      if (!configureRevenueCat()) throw new Error("Abonelik yalnızca Android uygulamasında kullanılabilir.");
+      const offerings = await Purchases.getOfferings();
+      const packageToBuy = offerings.current?.availablePackages.find(
+        (item) => item.product.identifier === "premium_monthly",
+      );
+      if (!packageToBuy) {
+        throw new Error("RevenueCat varsayılan teklifinde premium_monthly ürünü bulunamadı. Ürün ve offering ayarlarını kontrol et.");
+      }
+      const { customerInfo } = await Purchases.purchasePackage(packageToBuy);
+      if (!isPremium(customerInfo)) {
+        throw new Error("Satın alma sonrası premium yetkisi etkin görünmüyor. RevenueCat'te premium yetkisinin premium_monthly ürününe bağlı olduğunu kontrol et.");
+      }
+      await profile.setAdFree(true);
+      setSubscriptionMsg("Aboneliğin etkinleştirildi. Reklamsız deneyimin başladı.");
+    } catch (error) {
+      const purchaseError = error as { userCancelled?: boolean; message?: string };
+      if (!purchaseError.userCancelled) {
+        setSubscriptionMsg(purchaseError.message || "Satın alma başarısız oldu. Google Play ve RevenueCat ayarlarını kontrol et.");
+      }
+    } finally {
+      setSubscriptionBusy(false);
+    }
+  };
+
+  const restoreSubscription = async () => {
+    if (subscriptionBusy) return;
+    setSubscriptionBusy(true);
+    setSubscriptionMsg(null);
+    try {
+      if (!configureRevenueCat()) throw new Error("Abonelik yalnızca Android uygulamasında kullanılabilir.");
+      const customerInfo = await Purchases.restorePurchases();
+      const active = isPremium(customerInfo);
+      await profile.setAdFree(active);
+      setSubscriptionMsg(active
+        ? "Aktif aboneliğin geri yüklendi."
+        : "Bu Google Play hesabında aktif premium aboneliği bulunamadı.");
+    } catch (error) {
+      const restoreError = error as { userCancelled?: boolean; message?: string };
+      if (!restoreError.userCancelled) {
+        setSubscriptionMsg(restoreError.message || "Satın alımlar geri yüklenemedi. Biraz sonra tekrar dene.");
+      }
+    } finally {
+      setSubscriptionBusy(false);
     }
   };
 
@@ -130,11 +188,24 @@ export default function SettingsScreen() {
           </View>
           <ChunkyButton
             testID="settings-adfree-button"
-            label={profile.adFree ? "Üyeliği yönet" : "Abone ol · 199 ₺ / ay"}
+            label={subscriptionBusy ? "İşleniyor..." : profile.adFree ? "Üyeliği yönet" : "Abone ol · 199 ₺ / ay"}
             icon="card"
             variant="gold"
-            onPress={() => undefined}
+            disabled={subscriptionBusy}
+            onPress={onSubscriptionPress}
           />
+          <ChunkyButton
+            testID="settings-restore-purchases-button"
+            label={subscriptionBusy ? "İşleniyor..." : "Satın alımları geri yükle"}
+            icon="refresh"
+            disabled={subscriptionBusy}
+            onPress={restoreSubscription}
+          />
+          {subscriptionMsg ? (
+            <Text testID="settings-subscription-message" style={styles.msg}>
+              {subscriptionMsg}
+            </Text>
+          ) : null}
         </View>
 
         <Text style={styles.section}>Ses</Text>

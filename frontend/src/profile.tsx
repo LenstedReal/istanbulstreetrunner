@@ -1,8 +1,11 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
+import { Platform } from "react-native";
+import Purchases, { type CustomerInfo } from "react-native-purchases";
 
 import { api, ApiError } from "@/src/api";
 import { audio, DEFAULT_TRACK } from "@/src/audio";
 import { storage } from "@/src/utils/storage";
+import { configureRevenueCat, isPremium } from "@/src/subscription";
 
 export interface LocalScore {
   score: number;
@@ -306,18 +309,55 @@ export function ProfileProvider({ children }: { children: React.ReactNode }) {
     await storage.setItem(KEYS.songChanges, songChanges);
   }, []);
 
+  const welcomePackGrantInProgress = useRef(false);
   const setAdFree = useCallback(
     async (v: boolean) => {
       setState((prev) => ({ ...prev, adFree: v }));
       await storage.setItem(KEYS.adFree, v);
-      // One-time welcome pack with the first subscription.
-      if (v && !(await storage.getItem<boolean>(KEYS.welcomePack, false))) {
-        await storage.setItem(KEYS.welcomePack, true);
-        await addKeys(WELCOME_KEYS);
+      // Grant the welcome pack once, even if purchase and customer-info callbacks race.
+      if (v && !welcomePackGrantInProgress.current) {
+        welcomePackGrantInProgress.current = true;
+        try {
+          if (!(await storage.getItem<boolean>(KEYS.welcomePack, false))) {
+            await addKeys(WELCOME_KEYS);
+            await storage.setItem(KEYS.welcomePack, true);
+          }
+        } finally {
+          welcomePackGrantInProgress.current = false;
+        }
       }
     },
     [addKeys],
   );
+
+  useEffect(() => {
+    if (!state.loaded || Platform.OS !== "android" || !process.env.EXPO_PUBLIC_REVENUECAT_ANDROID_API_KEY) return;
+
+    let mounted = true;
+    let listenerRegistered = false;
+    let lastPremium: boolean | null = null;
+    const syncCustomerInfo = (customerInfo: CustomerInfo) => {
+      if (!mounted) return;
+      const premium = isPremium(customerInfo);
+      if (lastPremium === premium) return;
+      lastPremium = premium;
+      void setAdFree(premium).catch(() => undefined);
+    };
+
+    try {
+      if (!configureRevenueCat()) return () => { mounted = false; };
+      Purchases.addCustomerInfoUpdateListener(syncCustomerInfo);
+      listenerRegistered = true;
+      Purchases.getCustomerInfo().then(syncCustomerInfo).catch(() => undefined);
+    } catch {
+      // Subscription-service errors must not stop the game from opening.
+    }
+
+    return () => {
+      mounted = false;
+      if (listenerRegistered) Purchases.removeCustomerInfoUpdateListener(syncCustomerInfo);
+    };
+  }, [state.loaded, setAdFree]);
 
   const value = useMemo<ProfileApi>(
     () => ({

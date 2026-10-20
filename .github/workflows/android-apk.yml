@@ -53,6 +53,7 @@ jobs:
           EXPO_PUBLIC_BACKEND_URL: ${{ vars.EXPO_PUBLIC_BACKEND_URL }}
           EXPO_PUBLIC_ADMOB_ANDROID_INTERSTITIAL: ${{ vars.EXPO_PUBLIC_ADMOB_ANDROID_INTERSTITIAL }}
           EXPO_PUBLIC_ADMOB_ANDROID_REWARDED: ${{ vars.EXPO_PUBLIC_ADMOB_ANDROID_REWARDED }}
+          EXPO_PUBLIC_REVENUECAT_ANDROID_API_KEY: ${{ vars.EXPO_PUBLIC_REVENUECAT_ANDROID_API_KEY }}
         run: |
           set -eu
           : > .env.production
@@ -63,9 +64,11 @@ jobs:
           fi
           test -n "$EXPO_PUBLIC_ADMOB_ANDROID_INTERSTITIAL"
           test -n "$EXPO_PUBLIC_ADMOB_ANDROID_REWARDED"
+          test -n "$EXPO_PUBLIC_REVENUECAT_ANDROID_API_KEY"
           printf 'EXPO_PUBLIC_ADMOB_ANDROID_INTERSTITIAL=%s\n' "$EXPO_PUBLIC_ADMOB_ANDROID_INTERSTITIAL" >> .env.production
           printf 'EXPO_PUBLIC_ADMOB_ANDROID_REWARDED=%s\n' "$EXPO_PUBLIC_ADMOB_ANDROID_REWARDED" >> .env.production
-          echo "Backend and Android AdMob environment configured."
+          printf 'EXPO_PUBLIC_REVENUECAT_ANDROID_API_KEY=%s\n' "$EXPO_PUBLIC_REVENUECAT_ANDROID_API_KEY" >> .env.production
+          echo "Backend, Android AdMob, and RevenueCat environment configured."
 
       - name: Generate Android project
         working-directory: frontend

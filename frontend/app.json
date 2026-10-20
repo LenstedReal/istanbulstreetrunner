@@ -2,7 +2,7 @@
   "expo": {
     "name": "Istanbul Runner",
     "slug": "frontend",
-    "version": "1.0.1",
+    "version": "1.0.2",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "frontend",
@@ -18,9 +18,10 @@
       },
       "package": "com.lenstedreal.istanbulrunner",
       "permissions": [
-        "android.permission.VIBRATE"
+        "android.permission.VIBRATE",
+        "com.android.vending.BILLING"
       ],
-      "versionCode": 2
+      "versionCode": 3
     },
     "web": {
       "bundler": "metro",
