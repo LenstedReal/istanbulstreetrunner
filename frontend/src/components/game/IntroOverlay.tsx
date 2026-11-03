@@ -13,12 +13,13 @@ import Animated, {
   withTiming,
 } from "react-native-reanimated";
 
+import { useT } from "@/src/i18n";
 import { makeStyles } from "@/src/theme";
 import { fonts, radius, spacing } from "@/src/tokens";
 
 const MIN_MS = 3000; // never shorter than 3 s
 const MAX_MS = 7000; // never longer than 7 s, even on a slow device
-const TIPS = ["Koşucu yükleniyor…", "Nesneler yükleniyor…", "Hazırlanıyor…"];
+const TIPS = ["intro.loadingRunner", "intro.loadingCity", "intro.almost"] as const;
 
 interface Props {
   ready: boolean;
@@ -28,6 +29,7 @@ interface Props {
 /** Animated launch screen: logo drop-in, progress bar and a rotating tip. */
 export function IntroOverlay({ ready, onDone }: Props) {
   const styles = useStyles();
+  const t = useT();
   const start = useRef(Date.now());
   const [tip, setTip] = useState(0);
   const logo = useSharedValue(0);
@@ -68,14 +70,14 @@ export function IntroOverlay({ ready, onDone }: Props) {
         <Image source={require("../../../assets/images/icon.png")} style={styles.logo} contentFit="contain" />
       </Animated.View>
       <Text style={styles.title} testID="intro-title">
-        ISTANBUL{"\n"}RUNNER
+        ISTANBUL{"\n"}STREET RUNNER
       </Text>
       <View style={styles.bottom}>
         <View style={styles.track} testID="intro-progress">
           <Animated.View style={[styles.fill, barStyle]} />
         </View>
         <Text style={styles.tip} testID="intro-tip">
-          {TIPS[tip]}
+          {t(TIPS[tip])}
         </Text>
       </View>
     </Animated.View>

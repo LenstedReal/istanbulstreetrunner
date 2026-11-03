@@ -12,9 +12,9 @@ import { ErrorBoundary } from "@/src/components/error-boundary";
 import { ProfileProvider } from "@/src/profile";
 import { queryClient } from "@/src/query-client";
 
-// Disable logbox errors etc so that users can see the app
-// and agent works as expected.
-LogBox.ignoreAllLogs(true);
+// Release builds never show LogBox; in development keep warnings visible but
+// silence the noisy third-party ones so real problems stand out.
+if (__DEV__) LogBox.ignoreLogs(["[ads]", "[subscription]", "[gfx]"]);
 
 SplashScreen.preventAutoHideAsync().catch(() => undefined);
 
@@ -48,6 +48,13 @@ export default function RootLayout() {
                 <Stack.Screen name="index" />
                 <Stack.Screen name="leaderboard" options={{ animation: "slide_from_right" }} />
                 <Stack.Screen name="settings" options={{ presentation: "modal", animation: "slide_from_bottom" }} />
+                <Stack.Screen name="pier" options={{ animation: "slide_from_right" }} />
+                <Stack.Screen name="shop" options={{ animation: "slide_from_right" }} />
+                <Stack.Screen name="missions" options={{ animation: "slide_from_right" }} />
+                <Stack.Screen name="privacy" options={{ animation: "slide_from_right" }} />
+                <Stack.Screen name="terms" options={{ animation: "slide_from_right" }} />
+                <Stack.Screen name="licenses" options={{ animation: "slide_from_right" }} />
+                <Stack.Screen name="delete-account" options={{ animation: "slide_from_right" }} />
               </Stack>
             </ProfileProvider>
           </KeyboardProvider>

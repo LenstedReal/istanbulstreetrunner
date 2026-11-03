@@ -5,7 +5,11 @@ import { Text, View } from "react-native";
 import { ChunkyButton } from "@/src/components/ChunkyButton";
 import { CoinIcon } from "@/src/components/CoinIcon";
 import { Sheet, SheetActions } from "@/src/components/game/Sheet";
+import { DISTRICTS, type DistrictId } from "@/src/game/districts";
 import type { RunResult } from "@/src/game/engine";
+import { fmt, useT } from "@/src/i18n";
+import type { RunStatus } from "@/src/profile";
+import { TOKENS_PER_DISTRICT } from "@/src/progress";
 import { makeStyles, useTheme } from "@/src/theme";
 import { fonts, radius, spacing } from "@/src/tokens";
 
@@ -13,47 +17,68 @@ interface Props {
   result: RunResult;
   isRecord: boolean;
   bestScore: number;
+  status: RunStatus;
+  serverRecord: boolean;
+  /** Token pieces now held in this district (shown when one was collected). */
+  tokens: number | null;
+  unlocked: DistrictId | null;
   onRetry: () => void;
   onHome: () => void;
 }
 
-export function GameOverSheet({ result, isRecord, bestScore, onRetry, onHome }: Props) {
+export function GameOverSheet({ result, isRecord, bestScore, status, serverRecord, tokens, unlocked, onRetry, onHome }: Props) {
   const styles = useStyles();
   const { colors } = useTheme();
+  const t = useT();
+  const note =
+    status === "pending" ? t("over.pending") : status === "ranked" ? (serverRecord ? t("over.newServerRecord") : t("over.ranked")) : status === "queued" ? t("over.queued") : status === "flagged" ? t("over.flagged") : status === "notRanked" ? t("over.notRanked") : null;
   return (
-    <Sheet title="Çarptın!" testID="game-over-sheet">
+    <Sheet title={result.reason === "caught" ? t("over.caught") : t("over.crashed")} testID="game-over-sheet">
       {isRecord ? (
         <View style={styles.record} testID="new-record-badge">
           <Ionicons name="trophy" size={18} color={colors.onBrandTertiary} />
-          <Text style={styles.recordText}>Yeni Rekor!</Text>
+          <Text style={styles.recordText}>{t("over.record")}</Text>
         </View>
       ) : null}
       <View style={styles.scoreBlock}>
-        <Text style={styles.scoreLabel}>SKOR</Text>
+        <Text style={styles.scoreLabel}>{t("over.score")}</Text>
         <Text style={styles.score} testID="game-over-score">
-          {result.score.toLocaleString("tr-TR")}
+          {fmt(result.score)}
         </Text>
       </View>
       <View style={styles.statsRow}>
         <View style={styles.stat} testID="game-over-coins">
           <CoinIcon size={20} />
           <Text style={styles.statValue}>{result.coins}</Text>
-          <Text style={styles.statLabel}>altın</Text>
+          <Text style={styles.statLabel}>{t("over.coins")}</Text>
         </View>
         <View style={styles.stat} testID="game-over-distance">
           <Ionicons name="speedometer-outline" size={18} color={colors.info} />
           <Text style={styles.statValue}>{result.distance} m</Text>
-          <Text style={styles.statLabel}>mesafe</Text>
+          <Text style={styles.statLabel}>{t("over.distance")}</Text>
         </View>
         <View style={styles.stat} testID="game-over-best">
           <Ionicons name="star" size={18} color={colors.brandPrimary} />
-          <Text style={styles.statValue}>{bestScore.toLocaleString("tr-TR")}</Text>
-          <Text style={styles.statLabel}>en iyi</Text>
+          <Text style={styles.statValue}>{fmt(bestScore)}</Text>
+          <Text style={styles.statLabel}>{t("over.best")}</Text>
         </View>
       </View>
+      {tokens !== null ? (
+        <View style={styles.token} testID="game-over-token">
+          <Ionicons name="boat" size={18} color={colors.info} />
+          <Text style={styles.tokenText}>
+            {unlocked ? t("pier.unlocked", { name: t(DISTRICTS[unlocked].name) }) : t("over.token", { have: Math.min(tokens, TOKENS_PER_DISTRICT) })}
+          </Text>
+        </View>
+      ) : null}
+      {note ? (
+        <Text style={styles.note} testID="game-over-note">
+          {note}
+        </Text>
+      ) : null}
       <SheetActions>
-        <ChunkyButton testID="game-over-home-button" label="Ana Menü" icon="home" variant="neutral" onPress={onHome} style={styles.flex} />
-        <ChunkyButton testID="game-over-retry-button" label="Tekrar" icon="refresh" variant="primary" onPress={onRetry} style={styles.flex} />
+        <ChunkyButton testID="game-over-home-button" label={t("common.home")} icon="home" variant="neutral" onPress={onHome} style={styles.flex} />
+        <ChunkyButton testID="game-over-retry-button" label={t("common.retry")} icon="refresh" variant="primary" onPress={onRetry} style={styles.flex} />
       </SheetActions>
     </Sheet>
   );
@@ -87,5 +112,8 @@ const useStyles = makeStyles((colors) => ({
   },
   statValue: { fontFamily: fonts.display, fontSize: 18, color: colors.onSurfaceTertiary },
   statLabel: { fontFamily: fonts.text, fontSize: 12, color: colors.muted },
+  token: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: spacing.sm, backgroundColor: colors.surfaceTertiary, borderRadius: radius.md, padding: spacing.sm },
+  tokenText: { fontFamily: fonts.textHeavy, fontSize: 14, color: colors.onSurfaceTertiary, flexShrink: 1 },
+  note: { fontFamily: fonts.text, fontSize: 12, color: colors.muted, textAlign: "center" },
   flex: { flex: 1 },
 }));

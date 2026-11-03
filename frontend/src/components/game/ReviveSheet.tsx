@@ -4,6 +4,7 @@ import { Text, View } from "react-native";
 
 import { ChunkyButton } from "@/src/components/ChunkyButton";
 import { Sheet, SheetActions } from "@/src/components/game/Sheet";
+import { fmt, useT } from "@/src/i18n";
 import { makeStyles, useTheme } from "@/src/theme";
 import { fonts, radius, spacing } from "@/src/tokens";
 
@@ -25,6 +26,7 @@ interface Props {
 export function ReviveSheet({ score, cost, keys, revivesLeft, adsAvailable, busy, onUseKeys, onWatchAd, onGiveUp }: Props) {
   const styles = useStyles();
   const { colors } = useTheme();
+  const t = useT();
   const [left, setLeft] = useState(COUNTDOWN);
 
   useEffect(() => {
@@ -39,20 +41,18 @@ export function ReviveSheet({ score, cost, keys, revivesLeft, adsAvailable, busy
 
   const canPay = keys >= cost;
   return (
-    <Sheet title="Devam et?" testID="revive-sheet">
+    <Sheet title={t("revive.title")} testID="revive-sheet">
       <View style={styles.ring} testID="revive-countdown">
         <Text style={styles.ringText}>{left}</Text>
       </View>
-      <Text style={styles.score}>Skor: {score.toLocaleString("tr-TR")}</Text>
+      <Text style={styles.score}>{t("revive.score", { score: fmt(score) })}</Text>
       <View style={styles.costRow} testID="revive-cost">
         <Ionicons name="key" size={20} color={colors.brandTertiaryShade} />
-        <Text style={styles.costText}>
-          {cost} anahtar · sende {keys}
-        </Text>
+        <Text style={styles.costText}>{t("revive.cost", { cost, keys })}</Text>
       </View>
       <ChunkyButton
         testID="revive-keys-button"
-        label={canPay ? `Anahtarla devam (${cost})` : `Yetersiz anahtar (${cost})`}
+        label={canPay ? t("revive.useKeys", { cost }) : t("revive.notEnough", { cost })}
         icon="key"
         variant="gold"
         size="lg"
@@ -61,7 +61,7 @@ export function ReviveSheet({ score, cost, keys, revivesLeft, adsAvailable, busy
       />
       <ChunkyButton
         testID="revive-ad-button"
-        label={busy ? "Reklam yükleniyor…" : `Reklam izle · +${cost} anahtar`}
+        label={busy ? t("menu.adLoading") : t("revive.watchAdKeys", { cost })}
         icon="play-circle"
         variant="secondary"
         size="lg"
@@ -69,7 +69,7 @@ export function ReviveSheet({ score, cost, keys, revivesLeft, adsAvailable, busy
         onPress={onWatchAd}
       />
       <SheetActions>
-        <ChunkyButton testID="revive-giveup-button" label="Vazgeç" icon="flag" variant="neutral" onPress={onGiveUp} style={styles.flex} />
+        <ChunkyButton testID="revive-giveup-button" label={t("revive.giveUp")} icon="flag" variant="neutral" onPress={onGiveUp} style={styles.flex} />
       </SheetActions>
     </Sheet>
   );

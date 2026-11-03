@@ -3,6 +3,7 @@ import React, { useEffect } from "react";
 import { Platform, Text, View } from "react-native";
 import Animated, { Easing, useAnimatedStyle, useSharedValue, withRepeat, withSequence, withTiming } from "react-native-reanimated";
 
+import { useT } from "@/src/i18n";
 import { makeStyles, useTheme } from "@/src/theme";
 import { fonts, radius, spacing } from "@/src/tokens";
 
@@ -32,20 +33,21 @@ function Hint({ icon, text, dx, dy, testID }: { icon: IconName; text: string; dx
 /** Semi-transparent swipe tutorial shown over the first seconds of a run. */
 export function TutorialOverlay() {
   const styles = useStyles();
+  const t = useT();
   return (
     <View style={styles.scrim} testID="tutorial-overlay">
       <View style={styles.cross}>
-        <Hint icon="arrow-up" text="Zıpla" dx={0} dy={-26} testID="tutorial-hint-jump" />
+        <Hint icon="arrow-up" text={t("tutorial.jump")} dx={0} dy={-26} testID="tutorial-hint-jump" />
         <View style={styles.midRow}>
-          <Hint icon="arrow-back" text="Sola" dx={-26} dy={0} testID="tutorial-hint-left" />
+          <Hint icon="arrow-back" text={t("tutorial.left")} dx={-26} dy={0} testID="tutorial-hint-left" />
           <View style={styles.center}>
             <Ionicons name="hand-left-outline" size={40} color="#FFFFFF" />
           </View>
-          <Hint icon="arrow-forward" text="Sağa" dx={26} dy={0} testID="tutorial-hint-right" />
+          <Hint icon="arrow-forward" text={t("tutorial.right")} dx={26} dy={0} testID="tutorial-hint-right" />
         </View>
-        <Hint icon="arrow-down" text="Eğil" dx={0} dy={26} testID="tutorial-hint-roll" />
+        <Hint icon="arrow-down" text={t("tutorial.roll")} dx={0} dy={26} testID="tutorial-hint-roll" />
       </View>
-      <Text style={styles.caption}>{Platform.OS === "web" ? "Kaydır veya ok tuşlarını kullan" : "Ekranda kaydır"}</Text>
+      <Text style={styles.caption}>{Platform.OS === "web" ? t("tutorial.web") : t("tutorial.touch")}</Text>
     </View>
   );
 }

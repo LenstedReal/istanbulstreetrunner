@@ -2,7 +2,7 @@ import { ExpoWebGLRenderingContext, GLView } from "expo-gl";
 import * as Haptics from "expo-haptics";
 import { useFocusEffect, useRouter } from "expo-router";
 import React, { useCallback, useEffect, useRef, useState } from "react";
-import { Platform, StyleSheet, Text, View } from "react-native";
+import { Platform, StyleSheet, Text, TextInput, View } from "react-native";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
 
 import { ads } from "@/src/ads/ads";
@@ -14,31 +14,66 @@ import { IntroOverlay } from "@/src/components/game/IntroOverlay";
 import { MainMenu } from "@/src/components/game/MainMenu";
 import { ReviveSheet } from "@/src/components/game/ReviveSheet";
 import { Sheet, SheetActions } from "@/src/components/game/Sheet";
+import { Toast } from "@/src/components/game/Toast";
 import { TutorialOverlay } from "@/src/components/game/TutorialOverlay";
-import { EngineCallbacks, GameEvent, GameInput, HudState, RunResult, RunnerEngine, getSessionShadowMode } from "@/src/game/engine";
-import { MAX_REVIVES, reviveCost, useProfile } from "@/src/profile";
-import { makeStyles } from "@/src/theme";
-import { fonts, spacing } from "@/src/tokens";
+import { OBSTACLES, type DistrictId } from "@/src/game/districts";
+import {
+  EngineCallbacks,
+  GameEvent,
+  GameInput,
+  HudState,
+  RunResult,
+  RunnerEngine,
+  getSessionShadowMode,
+  resetSessionShadowMode,
+} from "@/src/game/engine";
+import { effectiveQuality, pickAutoQuality, resolveProfile } from "@/src/game/quality/profiles";
+import { probeCaps } from "@/src/game/render/pipeline";
+import { fmt, t, useT } from "@/src/i18n";
+import { MAX_REVIVES, reviveCost, useProfile, type RunSession } from "@/src/profile";
+import { makeStyles, useTheme } from "@/src/theme";
+import { fonts, radius, spacing } from "@/src/tokens";
 
 type Mode = "menu" | "playing" | "paused" | "crashed" | "gameover";
 
-const EMPTY_HUD: HudState = { score: 0, coins: 0, keys: 0, multiplier: 1, distance: 0, speedKmh: 0, powerup: null, shield: false };
+const EMPTY_HUD: HudState = { score: 0, coins: 0, keys: 0, multiplier: 1, distance: 0, speedKmh: 0, powerup: null, shield: false, stumble: 0 };
 const SWIPE_PX = 26;
+const SFX = {
+  crash: "crash",
+  coin: "coin",
+  key: "powerup",
+  jump: "jump",
+  roll: "roll",
+  lane: "swipe",
+  powerup: "powerup",
+  "shield-break": "shield",
+  stumble: "shield",
+  token: "powerup",
+  wings: "powerup",
+  carpet: "powerup",
+} as const;
 
 export default function GameScreen() {
   const styles = useStyles();
+  const { colors } = useTheme();
   const router = useRouter();
   const profile = useProfile();
+  useT();
 
   const [mode, setMode] = useState<Mode>("menu");
   const [hud, setHud] = useState<HudState>(EMPTY_HUD);
   const [result, setResult] = useState<RunResult | null>(null);
   const [isRecord, setIsRecord] = useState(false);
+  const [tokenInfo, setTokenInfo] = useState<{ tokens: number; unlocked: DistrictId | null } | null>(null);
   const [showTutorial, setShowTutorial] = useState(false);
   const [glReady, setGlReady] = useState(false);
+  const [glKey, setGlKey] = useState(0);
   const [introDone, setIntroDone] = useState(false);
   const [revives, setRevives] = useState(0);
   const [adBusy, setAdBusy] = useState(false);
+  const [toast, setToast] = useState<{ text: string; icon: "bulb" | "boat" | "warning" } | null>(null);
+  const [transferCode, setTransferCode] = useState("");
+  const [conflictMsg, setConflictMsg] = useState<string | null>(null);
 
   const engineRef = useRef<RunnerEngine | null>(null);
   const modeRef = useRef<Mode>("menu");
@@ -48,13 +83,35 @@ export default function GameScreen() {
   const revivesRef = useRef(0);
   const resumeAfterRouteRef = useRef(false);
   const pendingInterstitialRef = useRef(false);
+  const sessionRef = useRef<RunSession | null>(null);
+  const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const showTutorialRef = useRef(false);
+  showTutorialRef.current = showTutorial;
+  /** Quality and shadows the current GL view was built with. */
+  const builtWith = useRef<string | null>(null);
 
+  const graphicsKey = useCallback(() => {
+    const g = profileRef.current.graphics;
+    return `${effectiveQuality(g)}:${g.shadows}`;
+  }, []);
+
+  const showToast = useCallback((text: string, icon: "bulb" | "boat" | "warning" = "bulb", ms = 2600) => {
+    if (toastTimer.current) clearTimeout(toastTimer.current);
+    setToast({ text, icon });
+    toastTimer.current = setTimeout(() => setToast(null), ms);
+  }, []);
+  useEffect(() => () => {
+    if (toastTimer.current) clearTimeout(toastTimer.current);
+  }, []);
+
+  /** Interstitials only at game over, only when one is already loaded; otherwise it waits for the next game over. */
   const maybeShowInterstitial = useCallback(async () => {
     if (!pendingInterstitialRef.current) return;
     if (profileRef.current.adFree || !ads.available) {
       pendingInterstitialRef.current = false;
       return;
     }
+    if (!ads.interstitialReady()) return;
     pendingInterstitialRef.current = false;
     setAdBusy(true);
     try {
@@ -66,9 +123,10 @@ export default function GameScreen() {
     }
   }, []);
 
+  // Consent (UMP) and the ad SDK start after the launch screen so the form does not cover it.
   useEffect(() => {
-    void ads.initialize();
-  }, []);
+    if (introDone) void ads.initialize();
+  }, [introDone]);
 
   // Audio: load players once, follow settings.
   useEffect(() => {
@@ -81,10 +139,32 @@ export default function GameScreen() {
   }, [profile.sound, profile.music, profile.musicTrack, profile.loaded]);
 
   useEffect(() => {
-    // Turning shadows off applies immediately. Turning them back on is saved as
-    // the next-launch preference to avoid Expo GL's live drawBuffers crash.
+    // Turning shadows off applies immediately; turning them on rebuilds the GL view from the menu.
     if (!profile.shadows) engineRef.current?.setShadows(false);
   }, [profile.shadows, glReady]);
+
+  useEffect(() => {
+    engineRef.current?.setFpsCap(profile.graphics.fps);
+  }, [profile.graphics.fps, glReady]);
+
+  useEffect(() => {
+    engineRef.current?.setLook(profile.look);
+  }, [profile.look, glReady]);
+
+  useEffect(() => {
+    if (mode === "menu") engineRef.current?.setDistrict(profile.progress.current);
+  }, [profile.progress.current, glReady, mode]);
+
+  // Quality or shadow changes: rebuild the GL view, but only while the menu is shown.
+  useEffect(() => {
+    if (!glReady || mode !== "menu" || builtWith.current === null) return;
+    if (builtWith.current === graphicsKey()) return;
+    engineRef.current?.dispose();
+    engineRef.current = null;
+    resetSessionShadowMode(profile.graphics.shadows);
+    setGlReady(false);
+    setGlKey((k) => k + 1);
+  }, [profile.graphics, glReady, mode, graphicsKey]);
 
   // Callbacks object is mutable so the engine always sees the latest closures.
   const callbacks = useRef<EngineCallbacks>({
@@ -92,77 +172,102 @@ export default function GameScreen() {
     onCrash: (r) => {
       setResult(r);
       audio.pauseMusic();
-      // Out of revives for this run -> straight to the result sheet.
       if (revivesRef.current >= MAX_REVIVES) engineRef.current?.endRun();
       else setMode("crashed");
     },
     onGameOver: async (r) => {
       setResult(r);
       audio.pauseMusic();
-      const { isRecord: rec } = await profileRef.current.recordRun(r);
-      setIsRecord(rec);
-      if (rec && profileRef.current.haptics) {
+      const out = await profileRef.current.recordRun({ ...r, revives: revivesRef.current }, sessionRef.current);
+      sessionRef.current = null;
+      setIsRecord(out.isRecord);
+      setTokenInfo(r.token ? { tokens: out.tokens, unlocked: out.unlocked } : null);
+      if (out.isRecord && profileRef.current.haptics) {
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => undefined);
       }
       setMode("gameover");
       void maybeShowInterstitial();
     },
     onEvent: (e: GameEvent) => {
-      const sfx = { crash: "crash", coin: "coin", key: "powerup", jump: "jump", roll: "roll", lane: "swipe", powerup: "powerup", "shield-break": "shield" } as const;
-      audio.play(sfx[e]);
-      if (e === "key") void profileRef.current.addKeys(1);
-      if (!profileRef.current.haptics) return;
+      audio.play(SFX[e]);
+      const p = profileRef.current;
+      if (e === "key") void p.addKeys(1);
+      if (e === "token") showToast(t("token.got"), "boat");
+      if ((e === "wings" || e === "carpet" || e === "stumble") && !p.hintsSeen.includes(`ev:${e}`)) {
+        showToast(t(e === "wings" ? "power.wingsHint" : e === "carpet" ? "power.carpetHint" : "hint.stumble"), e === "stumble" ? "warning" : "bulb", 3200);
+        void p.markHintSeen(`ev:${e}`);
+      }
+      if (!p.haptics) return;
       if (e === "crash") Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error).catch(() => undefined);
-      else if (e === "powerup" || e === "shield-break" || e === "key") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => undefined);
+      else if (e === "powerup" || e === "shield-break" || e === "key" || e === "token" || e === "wings" || e === "carpet" || e === "stumble")
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => undefined);
       else Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => undefined);
+    },
+    onObstacleSeen: (kind) => {
+      const p = profileRef.current;
+      if (showTutorialRef.current || p.hintsSeen.includes(kind)) return;
+      showToast(t(OBSTACLES[kind].hint));
+      void p.markHintSeen(kind);
+    },
+    onBenchmark: (fps) => {
+      const g = profileRef.current.graphics;
+      if (g.quality === "auto" && !g.autoResolved) void profileRef.current.setGraphics({ autoResolved: pickAutoQuality(fps) });
+    },
+    onGraphicsFallback: () => {
+      const g = profileRef.current.graphics;
+      const q = effectiveQuality(g);
+      if (!g.unsafe.includes(q)) void profileRef.current.setGraphics({ unsafe: [...g.unsafe, q] });
     },
   });
 
   const onContextCreate = useCallback((gl: ExpoWebGLRenderingContext) => {
-    // Expo GL may recreate its native context when the Settings modal is shown
-    // or dismissed. Rebind the renderer on the existing engine instead of
-    // disposing the engine and losing the active run state.
+    // Expo GL may recreate its native context when a modal is shown or dismissed.
+    // Rebind the renderer on the existing engine instead of losing the run.
     if (engineRef.current) {
       engineRef.current.replaceContext(gl);
     } else {
-      engineRef.current = new RunnerEngine(
-        gl,
-        callbacks.current,
-        getSessionShadowMode(profileRef.current.shadows),
-      );
+      const prefs = profileRef.current.graphics;
+      const profileForDevice = resolveProfile(prefs, probeCaps(gl as unknown as WebGL2RenderingContext));
+      engineRef.current = new RunnerEngine(gl, callbacks.current, getSessionShadowMode(prefs.shadows), {
+        profile: profileForDevice,
+        fps: prefs.fps,
+        look: profileRef.current.look,
+        benchmark: prefs.quality === "auto" && !prefs.autoResolved && prefs.fps === 60,
+      });
+      engineRef.current.setDistrict(profileRef.current.progress.current);
+      builtWith.current = graphicsKey();
     }
-    // Honor a saved "off" preference immediately, but never enable shadows on a
-    // live renderer merely because Settings was opened or the GL context changed.
     if (!profileRef.current.shadows) engineRef.current.setShadows(false);
     setGlReady(true);
-  }, []);
+  }, [graphicsKey]);
 
   useEffect(() => () => engineRef.current?.dispose(), []);
 
   const beginRun = useCallback(() => {
     const engine = engineRef.current;
     if (!engine) return;
+    const p = profileRef.current;
     setHud(EMPTY_HUD);
     setResult(null);
     setIsRecord(false);
+    setTokenInfo(null);
     revivesRef.current = 0;
     setRevives(0);
-    setShowTutorial(!profileRef.current.tutorialSeen);
-    engine.start();
+    setShowTutorial(!p.tutorialSeen);
+    sessionRef.current = p.takeRunSession();
+    engine.start({ district: p.progress.current, seed: sessionRef.current?.seed, tokenAt: p.tokenAtForRun() });
     setMode("playing");
     audio.startMusic();
-    if (profileRef.current.haptics) Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => undefined);
+    if (p.haptics) Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => undefined);
   }, []);
 
   /** Start immediately; interstitials are deferred until the run has ended. */
   const startRun = useCallback(() => {
     beginRun();
     void profileRef.current.registerPlay().then((due) => {
-      if (!due) return;
-      pendingInterstitialRef.current = true;
-      if (modeRef.current === "gameover") void maybeShowInterstitial();
+      if (due) pendingInterstitialRef.current = true;
     }).catch(() => undefined);
-  }, [beginRun, maybeShowInterstitial]);
+  }, [beginRun]);
 
   const reviveNow = useCallback(() => {
     revivesRef.current += 1;
@@ -219,23 +324,25 @@ export default function GameScreen() {
     setMode("playing");
   }, []);
 
-  // Set the return intent before the native modal transition begins. The run
-  // is paused but not reset, so returning from Settings can continue this run.
-  const openSettings = useCallback(() => {
-    const currentMode = modeRef.current;
-    if (currentMode === "playing") {
-      resumeAfterRouteRef.current = true;
-      engineRef.current?.pause();
-      audio.pauseMusic();
-      setMode("paused");
-    } else if (currentMode === "paused") {
-      resumeAfterRouteRef.current = true;
-      audio.pauseMusic();
-    } else {
-      resumeAfterRouteRef.current = false;
-    }
-    router.push("/settings");
-  }, [router]);
+  const openRoute = useCallback(
+    (path: "/settings" | "/leaderboard" | "/pier" | "/shop" | "/missions") => {
+      const currentMode = modeRef.current;
+      if (currentMode === "playing") {
+        resumeAfterRouteRef.current = true;
+        engineRef.current?.pause();
+        audio.pauseMusic();
+        setMode("paused");
+      } else if (currentMode === "paused") {
+        resumeAfterRouteRef.current = true;
+        audio.pauseMusic();
+      } else {
+        resumeAfterRouteRef.current = false;
+      }
+      router.push(path);
+    },
+    [router],
+  );
+  const openSettings = useCallback(() => openRoute("/settings"), [openRoute]);
 
   // Preserve a run while visiting Settings from gameplay or the pause sheet.
   useFocusEffect(
@@ -258,7 +365,6 @@ export default function GameScreen() {
           audio.pauseMusic();
           setMode("paused");
         } else if (modeAtBlur === "paused") {
-          // Settings opened from the pause sheet: resume the same run on return.
           resumeAfterRouteRef.current = true;
           audio.pauseMusic();
         } else {
@@ -275,17 +381,17 @@ export default function GameScreen() {
 
   useEffect(() => {
     if (!showTutorial) return;
-    const t = setTimeout(dismissTutorial, 4500);
-    return () => clearTimeout(t);
+    const timer = setTimeout(dismissTutorial, 4500);
+    return () => clearTimeout(timer);
   }, [showTutorial, dismissTutorial]);
 
   const sendInput = useCallback(
     (action: GameInput) => {
       if (modeRef.current !== "playing") return;
       engineRef.current?.input(action);
-      if (showTutorial) dismissTutorial();
+      if (showTutorialRef.current) dismissTutorial();
     },
-    [showTutorial, dismissTutorial],
+    [dismissTutorial],
   );
 
   const fired = useRef(false);
@@ -315,17 +421,7 @@ export default function GameScreen() {
   // Keyboard support for the web preview.
   useEffect(() => {
     if (Platform.OS !== "web") return;
-    const map: Record<string, GameInput> = {
-      ArrowLeft: "left",
-      a: "left",
-      ArrowRight: "right",
-      d: "right",
-      ArrowUp: "jump",
-      w: "jump",
-      " ": "jump",
-      ArrowDown: "roll",
-      s: "roll",
-    };
+    const map: Record<string, GameInput> = { ArrowLeft: "left", a: "left", ArrowRight: "right", d: "right", ArrowUp: "jump", w: "jump", " ": "jump", ArrowDown: "roll", s: "roll" };
     const handler = (ev: KeyboardEvent) => {
       const action = map[ev.key];
       if (action) {
@@ -337,11 +433,24 @@ export default function GameScreen() {
     return () => window.removeEventListener("keydown", handler);
   }, [sendInput, pause]);
 
+  const missionsReady = (profile.missions?.missions ?? []).filter((m) => !m.claimed && m.progress >= m.target).length;
+
+  const redeem = async () => {
+    setConflictMsg(null);
+    try {
+      await profile.redeemTransferCode(transferCode);
+      setTransferCode("");
+      setConflictMsg(t("account.transferDone"));
+    } catch (e) {
+      setConflictMsg(e instanceof Error ? e.message : t("common.error"));
+    }
+  };
+
   return (
     <View style={styles.root} testID="game-screen">
       <GestureDetector gesture={pan}>
         <View style={StyleSheet.absoluteFill} testID="game-canvas">
-          <GLView style={StyleSheet.absoluteFill} onContextCreate={onContextCreate} />
+          <GLView key={glKey} style={StyleSheet.absoluteFill} onContextCreate={onContextCreate} />
         </View>
       </GestureDetector>
 
@@ -349,27 +458,37 @@ export default function GameScreen() {
         <MainMenu
           nickname={profile.nickname}
           bestScore={profile.bestScore}
-          totalCoins={profile.totalCoins}
+          coins={profile.coins}
           keys={profile.keys}
           adBusy={adBusy}
+          district={profile.progress.current}
+          onlineCount={profile.onlineCount}
+          account={profile.account}
+          waking={profile.waking}
+          missionsReady={missionsReady}
           onPlay={startRun}
-          onLeaderboard={() => router.push("/leaderboard")}
+          onLeaderboard={() => openRoute("/leaderboard")}
           onSettings={openSettings}
+          onPier={() => openRoute("/pier")}
+          onShop={() => openRoute("/shop")}
+          onMissions={() => openRoute("/missions")}
+          onRetryConnect={() => void profile.retryConnect()}
         />
       ) : null}
 
       {mode === "playing" || mode === "paused" ? <Hud hud={hud} onPause={pause} /> : null}
       {mode === "playing" && showTutorial ? <TutorialOverlay /> : null}
+      {mode === "playing" && toast ? <Toast text={toast.text} icon={toast.icon} /> : null}
 
       {mode === "paused" ? (
-        <Sheet title="Duraklatıldı" testID="pause-sheet">
-          <Text style={styles.pauseScore}>Skor: {hud.score.toLocaleString("tr-TR")}</Text>
+        <Sheet title={t("pause.title")} testID="pause-sheet">
+          <Text style={styles.pauseScore}>{t("pause.score", { score: fmt(hud.score) })}</Text>
           <View style={styles.pauseGear}>
             <ChunkyButton testID="pause-settings-button" icon="settings-sharp" round size="lg" variant="neutral" onPress={openSettings} />
           </View>
           <SheetActions>
-            <ChunkyButton testID="pause-home-button" label="Ana Menü" icon="home" variant="neutral" onPress={goHome} style={styles.flex} />
-            <ChunkyButton testID="pause-resume-button" label="Devam" icon="play" variant="primary" onPress={resume} style={styles.flex} />
+            <ChunkyButton testID="pause-home-button" label={t("common.home")} icon="home" variant="neutral" onPress={goHome} style={styles.flex} />
+            <ChunkyButton testID="pause-resume-button" label={t("common.resume")} icon="play" variant="primary" onPress={resume} style={styles.flex} />
           </SheetActions>
         </Sheet>
       ) : null}
@@ -389,7 +508,39 @@ export default function GameScreen() {
       ) : null}
 
       {mode === "gameover" && result ? (
-        <GameOverSheet result={result} isRecord={isRecord} bestScore={profile.bestScore} onRetry={startRun} onHome={goHome} />
+        <GameOverSheet
+          result={result}
+          isRecord={isRecord}
+          bestScore={profile.bestScore}
+          status={profile.lastRun.status}
+          serverRecord={profile.lastRun.newRecord}
+          tokens={tokenInfo?.tokens ?? null}
+          unlocked={tokenInfo?.unlocked ?? null}
+          onRetry={startRun}
+          onHome={goHome}
+        />
+      ) : null}
+
+      {mode === "menu" && introDone && profile.account === "conflict" ? (
+        <Sheet title={t("account.conflictTitle")} testID="account-conflict-sheet">
+          <Text style={styles.body}>{t("account.conflictBody")}</Text>
+          <TextInput
+            testID="conflict-code-input"
+            value={transferCode}
+            onChangeText={(v) => setTransferCode(v.toUpperCase())}
+            placeholder={t("account.codePlaceholder")}
+            placeholderTextColor={colors.muted}
+            autoCapitalize="characters"
+            autoCorrect={false}
+            maxLength={14}
+            style={styles.input}
+          />
+          {conflictMsg ? <Text style={styles.msg}>{conflictMsg}</Text> : null}
+          <ChunkyButton testID="conflict-use-code" label={t("account.useCode")} icon="swap-horizontal" variant="secondary" disabled={transferCode.replace(/[^A-Z0-9]/g, "").length < 12} onPress={redeem} />
+          <SheetActions>
+            <ChunkyButton testID="conflict-new-profile" label={t("account.newProfile")} icon="person-add" variant="neutral" onPress={() => void profile.resolveConflictNewProfile()} style={styles.flex} />
+          </SheetActions>
+        </Sheet>
       ) : null}
 
       {/* Launch screen sits on top of everything until the 3D scene is ready (3–7 s). */}
@@ -402,5 +553,19 @@ const useStyles = makeStyles((colors) => ({
   root: { flex: 1, backgroundColor: colors.surfaceInverse },
   pauseScore: { fontFamily: fonts.textBold, fontSize: 18, color: colors.onSurface, textAlign: "center", marginBottom: spacing.sm },
   pauseGear: { alignItems: "center" },
+  body: { fontFamily: fonts.text, fontSize: 14, color: colors.onSurface },
+  msg: { fontFamily: fonts.textBold, fontSize: 13, color: colors.info },
+  input: {
+    height: 52,
+    borderRadius: radius.md,
+    borderWidth: 2,
+    borderColor: colors.border,
+    backgroundColor: colors.surfaceTertiary,
+    paddingHorizontal: spacing.md,
+    fontFamily: fonts.textBold,
+    fontSize: 16,
+    letterSpacing: 1.5,
+    color: colors.onSurfaceTertiary,
+  },
   flex: { flex: 1 },
 }));

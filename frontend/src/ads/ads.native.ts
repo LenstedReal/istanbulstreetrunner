@@ -18,6 +18,10 @@ const noAds: Ads = {
   async initialize() {
     return false;
   },
+  canRequestAds: () => false,
+  privacyOptionsRequired: () => false,
+  async showPrivacyOptions() {},
+  interstitialReady: () => false,
   async showInterstitial() {
     return false;
   },
@@ -26,94 +30,160 @@ const noAds: Ads = {
   },
 };
 
+const LOAD_WAIT_MS = 8000; // longest wait for a rewarded ad the player asked for
+const OPEN_WATCHDOG_MS = 120_000; // an opened ad that never reports "closed" still settles
+
 function buildAds(): Ads {
-  const { AdEventType, InterstitialAd, RewardedAd, RewardedAdEventType, TestIds, default: mobileAds } = native;
+  const { AdEventType, AdsConsent, AdsConsentPrivacyOptionsRequirementStatus, InterstitialAd, RewardedAd, RewardedAdEventType, TestIds, default: mobileAds } = native;
 
   const prodInterstitial = Platform.OS === "ios" ? process.env.EXPO_PUBLIC_ADMOB_IOS_INTERSTITIAL : process.env.EXPO_PUBLIC_ADMOB_ANDROID_INTERSTITIAL;
   const prodRewarded = Platform.OS === "ios" ? process.env.EXPO_PUBLIC_ADMOB_IOS_REWARDED : process.env.EXPO_PUBLIC_ADMOB_ANDROID_REWARDED;
-  // Google test units in development builds; the publisher's units only in release builds.
-  const interstitialId = __DEV__ || !prodInterstitial ? TestIds.INTERSTITIAL : prodInterstitial;
-  const rewardedId = __DEV__ || !prodRewarded ? TestIds.REWARDED : prodRewarded;
+  // Google test units in development builds and while EXPO_PUBLIC_ADS_TEST_MODE=1 (before the
+  // Play release); the publisher's units only in release builds with test mode off.
+  const testMode = __DEV__ || process.env.EXPO_PUBLIC_ADS_TEST_MODE === "1";
+  const interstitialId = testMode || !prodInterstitial ? TestIds.INTERSTITIAL : prodInterstitial;
+  const rewardedId = testMode || !prodRewarded ? TestIds.REWARDED : prodRewarded;
 
-  const request = { requestNonPersonalizedAdsOnly: false };
+  // Personalisation follows the UMP/TCF consent signal the SDK reads itself.
+  const request = {};
   let interstitial = InterstitialAd.createForAdRequest(interstitialId, request);
   let rewarded = RewardedAd.createForAdRequest(rewardedId, request);
   let initialized = false;
+  let initializing: Promise<boolean> | null = null;
+  let canRequest = false;
+  let privacyRequired = false;
+  let showing = false;
 
   const preload = () => {
+    if (!initialized) return;
     try {
       if (!interstitial.loaded) interstitial.load();
       if (!rewarded.loaded) rewarded.load();
     } catch {
-      /* ignore */
+      /* ignore: next attempt reloads */
+    }
+  };
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const readConsent = (info: any) => {
+    canRequest = Boolean(info?.canRequestAds);
+    privacyRequired = info?.privacyOptionsRequirementStatus === AdsConsentPrivacyOptionsRequirementStatus?.REQUIRED;
+  };
+
+  const gatherConsent = async () => {
+    try {
+      if (typeof AdsConsent?.gatherConsent === "function") {
+        readConsent(await AdsConsent.gatherConsent());
+      } else {
+        await AdsConsent.requestInfoUpdate();
+        readConsent(await AdsConsent.loadAndShowConsentFormIfRequired());
+      }
+    } catch (error) {
+      console.warn("[ads] consent flow failed", error);
+      try {
+        readConsent(await AdsConsent.getConsentInfo());
+      } catch {
+        canRequest = false;
+      }
     }
   };
 
   return {
     available: true,
-    async initialize() {
-      if (!initialized) {
-        try {
-          await mobileAds().initialize();
-          initialized = true;
-          preload();
-        } catch {
-          return false;
-        }
+    initialize() {
+      if (initialized) return Promise.resolve(true);
+      if (!initializing) {
+        initializing = (async () => {
+          await gatherConsent();
+          if (!canRequest) return false;
+          try {
+            await mobileAds().initialize();
+            initialized = true;
+            preload();
+            return true;
+          } catch (error) {
+            console.warn("[ads] initialize failed", error);
+            return false;
+          } finally {
+            initializing = null;
+          }
+        })();
       }
-      return true;
+      return initializing;
     },
 
+    canRequestAds: () => canRequest,
+    privacyOptionsRequired: () => privacyRequired,
+
+    async showPrivacyOptions() {
+      try {
+        readConsent(await AdsConsent.showPrivacyOptionsForm());
+        if (canRequest && !initialized) await this.initialize();
+      } catch (error) {
+        console.warn("[ads] privacy options failed", error);
+      }
+    },
+
+    interstitialReady: () => initialized && !showing && Boolean(interstitial.loaded),
+
     showInterstitial() {
+      if (!initialized || showing || !interstitial.loaded) {
+        preload();
+        return Promise.resolve(false);
+      }
+      showing = true;
       return new Promise<boolean>((resolve) => {
-        let shown = false;
+        let opened = false;
         let settled = false;
+        const timers: ReturnType<typeof setTimeout>[] = [];
+        const offs: (() => void)[] = [];
         const done = (ok: boolean) => {
           if (settled) return;
           settled = true;
-          offLoaded();
-          offOpened();
-          offClosed();
-          offError();
+          showing = false;
+          timers.forEach(clearTimeout);
+          offs.forEach((off) => off());
           interstitial = InterstitialAd.createForAdRequest(interstitialId, request);
-          interstitial.load();
+          preload();
           resolve(ok);
         };
-        const offLoaded = interstitial.addAdEventListener(AdEventType.LOADED, () => interstitial.show().catch(() => done(false)));
-        const offOpened = interstitial.addAdEventListener(AdEventType.OPENED, () => (shown = true));
-        const offClosed = interstitial.addAdEventListener(AdEventType.CLOSED, () => done(shown));
-        const offError = interstitial.addAdEventListener(AdEventType.ERROR, () => done(false));
-        // Never block the player for more than 6 s if there is no fill.
-        setTimeout(() => !shown && done(false), 6000);
-        if (interstitial.loaded) interstitial.show().catch(() => done(false));
-        else interstitial.load();
+        offs.push(interstitial.addAdEventListener(AdEventType.OPENED, () => (opened = true)));
+        offs.push(interstitial.addAdEventListener(AdEventType.CLOSED, () => done(opened)));
+        offs.push(interstitial.addAdEventListener(AdEventType.ERROR, () => done(false)));
+        timers.push(setTimeout(() => !opened && done(false), 5000));
+        timers.push(setTimeout(() => done(opened), OPEN_WATCHDOG_MS));
+        interstitial.show().catch(() => done(false));
       });
     },
 
     showRewarded() {
+      if (!initialized || showing) return Promise.resolve(false);
+      showing = true;
       return new Promise<boolean>((resolve) => {
         let earned = false;
-        let shown = false;
+        let opened = false;
         let settled = false;
+        const timers: ReturnType<typeof setTimeout>[] = [];
+        const offs: (() => void)[] = [];
         const done = (ok: boolean) => {
           if (settled) return;
           settled = true;
-          offLoaded();
-          offOpened();
-          offEarned();
-          offClosed();
-          offError();
+          showing = false;
+          timers.forEach(clearTimeout);
+          offs.forEach((off) => off());
           rewarded = RewardedAd.createForAdRequest(rewardedId, request);
-          rewarded.load();
+          preload();
           resolve(ok);
         };
-        const offLoaded = rewarded.addAdEventListener(RewardedAdEventType.LOADED, () => rewarded.show().catch(() => done(false)));
-        const offOpened = rewarded.addAdEventListener(AdEventType.OPENED, () => (shown = true));
-        const offEarned = rewarded.addAdEventListener(RewardedAdEventType.EARNED_REWARD, () => (earned = true));
-        const offClosed = rewarded.addAdEventListener(AdEventType.CLOSED, () => done(earned));
-        const offError = rewarded.addAdEventListener(AdEventType.ERROR, () => done(false));
-        setTimeout(() => !shown && done(false), 8000);
-        if (rewarded.loaded) rewarded.show().catch(() => done(false));
+        const show = () => rewarded.show().catch(() => done(false));
+        offs.push(rewarded.addAdEventListener(RewardedAdEventType.LOADED, () => !opened && show()));
+        offs.push(rewarded.addAdEventListener(AdEventType.OPENED, () => (opened = true)));
+        offs.push(rewarded.addAdEventListener(RewardedAdEventType.EARNED_REWARD, () => (earned = true)));
+        offs.push(rewarded.addAdEventListener(AdEventType.CLOSED, () => done(earned)));
+        offs.push(rewarded.addAdEventListener(AdEventType.ERROR, () => done(false)));
+        timers.push(setTimeout(() => !opened && done(false), LOAD_WAIT_MS));
+        timers.push(setTimeout(() => done(earned), OPEN_WATCHDOG_MS));
+        if (rewarded.loaded) show();
         else rewarded.load();
       });
     },
