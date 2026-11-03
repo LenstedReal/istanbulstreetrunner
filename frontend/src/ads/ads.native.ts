@@ -3,7 +3,6 @@ import { Platform } from "react-native";
 import type { Ads } from "./ads.web";
 
 // Guarded require: Expo Go has no native AdMob module, development/production builds do.
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 let native: any = null;
 try {
   // eslint-disable-next-line @typescript-eslint/no-require-imports
@@ -64,7 +63,6 @@ function buildAds(): Ads {
     }
   };
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const readConsent = (info: any) => {
     canRequest = Boolean(info?.canRequestAds);
     privacyRequired = info?.privacyOptionsRequirementStatus === AdsConsentPrivacyOptionsRequirementStatus?.REQUIRED;

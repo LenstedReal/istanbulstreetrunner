@@ -58,6 +58,8 @@ export default function GameScreen() {
   const { colors } = useTheme();
   const router = useRouter();
   const profile = useProfile();
+  // Plain value (a ".current" property would look like a ref to the hooks lint rule).
+  const district = profile.progress.current;
   useT();
 
   const [mode, setMode] = useState<Mode>("menu");
@@ -159,8 +161,8 @@ export default function GameScreen() {
   }, [profile.look, glReady]);
 
   useEffect(() => {
-    if (mode === "menu") engineRef.current?.setDistrict(profile.progress.current);
-  }, [profile.progress.current, glReady, mode]);
+    if (mode === "menu") engineRef.current?.setDistrict(district);
+  }, [district, glReady, mode]);
 
   // Quality or shadow changes: rebuild the GL view, but only while the menu is shown.
   useEffect(() => {
@@ -496,9 +498,9 @@ export default function GameScreen() {
           coins={profile.coins}
           keys={profile.keys}
           adBusy={adBusy}
-          district={profile.progress.current}
-          level={levelOf(profile.progress.current) + 1}
-          goal={profile.progress.done.includes(profile.progress.current) ? null : GOALS[profile.progress.current]}
+          district={district}
+          level={levelOf(district) + 1}
+          goal={profile.progress.done.includes(district) ? null : GOALS[district]}
           onlineCount={profile.onlineCount}
           account={profile.account}
           waking={profile.waking}
