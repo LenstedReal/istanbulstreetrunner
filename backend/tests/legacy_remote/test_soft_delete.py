@@ -11,7 +11,7 @@ import asyncio
 
 load_dotenv(Path(__file__).resolve().parent.parent / ".env")
 
-BASE_URL = "https://run-forever-31.preview.emergentagent.com".rstrip("/")
+BASE_URL = os.environ.get("LEGACY_API_URL", "").rstrip("/")
 API = f"{BASE_URL}/api"
 MONGO_URL = os.environ["MONGO_URL"]
 DB_NAME = os.environ["DB_NAME"]

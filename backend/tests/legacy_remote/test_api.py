@@ -3,7 +3,7 @@ import os
 import pytest
 import requests
 
-BASE_URL = "https://run-forever-31.preview.emergentagent.com".rstrip("/")
+BASE_URL = os.environ.get("LEGACY_API_URL", "").rstrip("/")
 API = f"{BASE_URL}/api"
 
 
