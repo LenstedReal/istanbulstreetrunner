@@ -88,6 +88,7 @@ jobs:
           EXPO_PUBLIC_ADMOB_ANDROID_INTERSTITIAL: ${{ vars.EXPO_PUBLIC_ADMOB_ANDROID_INTERSTITIAL }}
           EXPO_PUBLIC_ADMOB_ANDROID_REWARDED: ${{ vars.EXPO_PUBLIC_ADMOB_ANDROID_REWARDED }}
           EXPO_PUBLIC_REVENUECAT_ANDROID_API_KEY: ${{ vars.EXPO_PUBLIC_REVENUECAT_ANDROID_API_KEY }}
+          EXPO_PUBLIC_ADS_TEST_MODE: ${{ vars.EXPO_PUBLIC_ADS_TEST_MODE }}
         run: |
           set -eu
           : > .env.production
@@ -102,6 +103,14 @@ jobs:
           printf 'EXPO_PUBLIC_ADMOB_ANDROID_INTERSTITIAL=%s\n' "$EXPO_PUBLIC_ADMOB_ANDROID_INTERSTITIAL" >> .env.production
           printf 'EXPO_PUBLIC_ADMOB_ANDROID_REWARDED=%s\n' "$EXPO_PUBLIC_ADMOB_ANDROID_REWARDED" >> .env.production
           printf 'EXPO_PUBLIC_REVENUECAT_ANDROID_API_KEY=%s\n' "$EXPO_PUBLIC_REVENUECAT_ANDROID_API_KEY" >> .env.production
+          # Google test ads unless the repository variable EXPO_PUBLIC_ADS_TEST_MODE is "0"
+          # (set it to 0 only for the build that goes to Google Play).
+          if [ "${EXPO_PUBLIC_ADS_TEST_MODE:-1}" != "0" ]; then
+            printf 'EXPO_PUBLIC_ADS_TEST_MODE=1\n' >> .env.production
+            echo "::notice::Ads test mode is ON: this build shows Google test ads."
+          else
+            echo "::notice::Ads test mode is OFF: this build requests real ads."
+          fi
           echo "Backend, Android AdMob, and RevenueCat environment configured."
 
       - name: Generate Android project

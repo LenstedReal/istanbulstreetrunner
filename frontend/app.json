@@ -1,15 +1,15 @@
 {
   "expo": {
-    "name": "Istanbul Runner",
+    "name": "Istanbul Street Runner",
     "slug": "frontend",
-    "version": "1.0.3",
+    "version": "2.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "frontend",
+    "scheme": "istanbulrunner",
     "userInterfaceStyle": "automatic",
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.emergent.runforever.zvepxc"
+      "bundleIdentifier": "com.lenstedreal.istanbulrunner"
     },
     "android": {
       "adaptiveIcon": {
@@ -21,7 +21,16 @@
         "android.permission.VIBRATE",
         "com.android.vending.BILLING"
       ],
-      "versionCode": 4
+      "versionCode": 5,
+      "blockedPermissions": [
+        "android.permission.RECORD_AUDIO",
+        "android.permission.SYSTEM_ALERT_WINDOW",
+        "android.permission.READ_EXTERNAL_STORAGE",
+        "android.permission.WRITE_EXTERNAL_STORAGE",
+        "android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK",
+        "android.permission.USE_BIOMETRIC",
+        "android.permission.USE_FINGERPRINT"
+      ]
     },
     "web": {
       "bundler": "metro",
@@ -45,16 +54,25 @@
       "expo-web-browser",
       "expo-status-bar",
       "@react-native-vector-icons/ionicons",
-      "expo-audio",
+      [
+        "expo-audio",
+        {
+          "microphonePermission": false,
+          "recordAudioAndroid": false,
+          "enableBackgroundPlayback": false
+        }
+      ],
       [
         "react-native-google-mobile-ads",
         {
           "androidAppId": "ca-app-pub-4558868217074430~6140167741",
           "iosAppId": "ca-app-pub-3940256099942544~1458002511",
-          "userTrackingUsageDescription": "Size daha uygun reklamlar göstermek için kullanılır"
+          "userTrackingUsageDescription": "Size daha uygun reklamlar göstermek için kullanılır",
+          "delayAppMeasurementInit": true
         }
       ],
       "./plugins/withAndroidBuildConfig.js",
+      "./plugins/withAndroidManifestCleanup.js",
       "expo-asset"
     ],
     "experiments": {
@@ -63,6 +81,7 @@
   },
   "react-native-google-mobile-ads": {
     "android_app_id": "ca-app-pub-4558868217074430~6140167741",
-    "ios_app_id": "ca-app-pub-3940256099942544~1458002511"
+    "ios_app_id": "ca-app-pub-3940256099942544~1458002511",
+    "delay_app_measurement_init": true
   }
 }
