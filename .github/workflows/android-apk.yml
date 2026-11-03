@@ -5,12 +5,46 @@ on:
   push:
     paths:
       - "frontend/**"
+      - "scripts/verify_aab.py"
       - ".github/workflows/android-apk.yml"
 
 permissions:
   contents: read
 
+concurrency:
+  group: android-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
+  quality:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        working-directory: frontend
+        run: npm ci
+
+      - name: Type check
+        working-directory: frontend
+        run: npx tsc --noEmit
+
+      - name: Lint
+        working-directory: frontend
+        run: npm run lint
+
+      - name: Unit tests (game logic)
+        working-directory: frontend
+        run: npm test
+
   build:
     runs-on: ubuntu-24.04
 
@@ -145,3 +179,8 @@ jobs:
           path: frontend/android/app/build/outputs/bundle/release/*.aab
           if-no-files-found: error
           retention-days: 7
+
+      - name: Verify AAB manifest (target SDK, version, permissions, signer)
+        run: |
+          curl -sSfL -o "$RUNNER_TEMP/bundletool.jar" https://github.com/google/bundletool/releases/download/1.18.1/bundletool-all-1.18.1.jar
+          python3 scripts/verify_aab.py "$(ls frontend/android/app/build/outputs/bundle/release/*.aab | head -1)" "$RUNNER_TEMP/bundletool.jar" frontend/app.json
