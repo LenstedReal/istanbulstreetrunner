@@ -1,0 +1,495 @@
+{
+ "updated": "2026-11-04",
+ "contact": "contact.istanbulrunner@proton.me",
+ "developer": "LenstedReal",
+ "privacy": {
+  "tr": {
+   "title": "Gizlilik Politikası",
+   "intro": "Bu metin, Istanbul Street Runner oyununun (paket adı com.lenstedreal.istanbulrunner) hangi kişisel verileri, hangi amaçla ve ne kadar süreyle işlediğini açıklar. 6698 sayılı Kişisel Verilerin Korunması Kanunu (KVKK) kapsamındaki aydınlatma metni de budur.",
+   "sections": [
+    {
+     "h": "1. Veri sorumlusu ve iletişim",
+     "p": [
+      "Veri sorumlusu oyunun geliştiricisi LenstedReal'dir. Gizlilik, veri silme ve KVKK başvuruları için: contact.istanbulrunner@proton.me",
+      "Başvurularda oyundaki arkadaş kodunu yazarsan hesabını daha hızlı buluruz. Şifre, ödeme bilgisi veya kimlik belgesi göndermene gerek yoktur."
+     ]
+    },
+    {
+     "h": "2. Hesap ve oyun verileri",
+     "p": [
+      "Oyun ilk açılışta e-posta veya telefon istemeden anonim bir oyun hesabı oluşturur. Bu hesapta şunlar tutulur: rastgele oyuncu kimliği, herkese açık rastgele kimlik, takma ad, arkadaş kodu, en yüksek skor, toplam altın, koşu sayısı, arkadaş listesi, engellediğin oyuncular, gönderdiğin şikâyetler, günlük görev ilerlemesi ve bulut kaydı (anahtarlar, açılan semtler, kıyafetler).",
+      "Her koşunun sonunda skor, altın, mesafe, süre, devam etme sayısı, semt ve zıplama/eğilme/güçlendirici sayıları sunucuya gönderilir. Bunlar skorun gerçek bir koşudan geldiğini doğrulamak (hile önleme) için kullanılır.",
+      "Hesabın telefonda güvenli depolamada saklanan bir oturum anahtarıyla korunur. Sunucuda bu anahtarın yalnızca geri döndürülemez özeti (hash) tutulur.",
+      "Ayarlar, yerel skorlar ve tercihler yalnızca telefonunda saklanır."
+     ]
+    },
+    {
+     "h": "3. Çevrimiçi durumu",
+     "p": [
+      "Ayarlarda 'Arkadaşlarıma çevrimiçi görün' açıkken oyun açık olduğu sürece dakikada bir 'çevrimiçi' sinyali gönderilir. Bu kayıt en fazla 3 dakika tutulur ve yalnızca arkadaşlarına ve toplam çevrimiçi sayısına yansır. Ayarı kapatırsan sinyal gönderilmez."
+     ]
+    },
+    {
+     "h": "4. IP adresi ve güvenlik",
+     "p": [
+      "Sunucuya yapılan her istekte IP adresin, aşırı istekleri sınırlamak ve kötüye kullanımı önlemek için kısa süreli olarak bellekte kullanılır. Güvenlik kayıtlarında IP adresi yalnızca geri döndürülemez kısaltılmış özet olarak tutulur ve 90 gün sonra silinir."
+     ]
+    },
+    {
+     "h": "5. Reklamlar (Google AdMob)",
+     "p": [
+      "Ücretsiz sürümde Google AdMob reklamları gösterilir. Google; reklam kimliği, IP adresi, cihaz ve uygulama bilgileri ile reklam etkileşimlerini reklam sunmak, ölçmek ve dolandırıcılığı önlemek için işleyebilir.",
+      "Avrupa Ekonomik Alanı, Birleşik Krallık ve İsviçre'de oyun açılırken Google'ın onay formu (UMP) gösterilir; kişiselleştirilmiş reklamlar yalnızca onay verirsen gösterilir. Kararını Ayarlar → Gizlilik → Reklam gizlilik seçenekleri'nden değiştirebilirsin.",
+      "Telefonunun ayarlarından reklam kimliğini sıfırlayabilir veya silebilirsin. Ayrıntılar: https://policies.google.com/privacy"
+     ]
+    },
+    {
+     "h": "6. Abonelik ve satın almalar",
+     "p": [
+      "Aylık reklamsız üyelik Google Play üzerinden satın alınır. Ödeme bilgilerini Google işler; biz kart bilgini görmeyiz.",
+      "Abonelik durumunu doğrulamak için RevenueCat hizmeti kullanılır. RevenueCat'e oyuncu kimliğin ve Google Play'in satın alma kaydı iletilir. Ayrıntılar: https://www.revenuecat.com/privacy"
+     ]
+    },
+    {
+     "h": "7. Verilerin işlenme amaçları ve hukuki sebepleri",
+     "p": [
+      "Oyunu ve çevrimiçi özellikleri (sıralama, arkadaşlar, görevler, bulut kaydı) sunmak: KVKK m.5/2-c (sözleşmenin ifası).",
+      "Hile önleme, güvenlik ve kötüye kullanımın engellenmesi: KVKK m.5/2-f (meşru menfaat).",
+      "Kişiselleştirilmiş reklam: açık rıza (UMP onayı). Kişiselleştirilmemiş reklam ve ölçüm: meşru menfaat.",
+      "Abonelik yönetimi: sözleşmenin ifası."
+     ]
+    },
+    {
+     "h": "8. Verilerin aktarıldığı yerler",
+     "p": [
+      "Oyun sunucusu Render (Render Services, Inc.) üzerinde, veritabanı MongoDB Atlas (MongoDB, Inc.) üzerinde çalışır. Bu sunucular Türkiye dışında bulunabilir. Reklam verileri Google'a, abonelik verileri Google Play ve RevenueCat'e aktarılır.",
+      "Yurt dışına aktarım KVKK m.9'da öngörülen güvencelere (standart sözleşme) dayanılarak yapılır. Verilerin satılmaz ve bu sayılanlar dışında kimseyle paylaşılmaz; yasal zorunluluk hâlleri saklıdır."
+     ]
+    },
+    {
+     "h": "9. Saklama süreleri",
+     "p": [
+      "Hesap verileri, hesabını silene kadar saklanır.",
+      "Koşu doğrulama kayıtları 180 gün, eski sürümden gelen koşu kayıtları 30 gün, güvenlik kayıtları 90 gün, hesap aktarma kodları 24 saat, çevrimiçi sinyali 3 dakika sonra otomatik silinir."
+     ]
+    },
+    {
+     "h": "10. Hesabını ve verilerini silme",
+     "p": [
+      "Oyunda: Ayarlar → Gizlilik → Hesabı sil. Takma adın, skorların, arkadaşlıkların, görevlerin, bulut kaydın ve sunucudaki diğer tüm hesap verilerin hemen silinir; telefondaki oyun verileri de sıfırlanır.",
+      "Oyuna erişemiyorsan contact.istanbulrunner@proton.me adresine arkadaş kodunla yaz; talebin en geç 30 gün içinde yerine getirilir. Ayrıntılar web sayfasındaki 'Hesap silme' bölümündedir.",
+      "Abonelik hesap silinince iptal edilmez; Google Play → Abonelikler'den ayrıca iptal etmelisin."
+     ]
+    },
+    {
+     "h": "11. KVKK kapsamındaki hakların",
+     "p": [
+      "KVKK m.11 uyarınca verilerinin işlenip işlenmediğini öğrenme, bilgi isteme, düzeltilmesini veya silinmesini isteme, aktarıldığı üçüncü kişileri bilme, itiraz etme ve zararın giderilmesini isteme haklarına sahipsin. Başvurunu yukarıdaki e-posta adresine yapabilirsin; 30 gün içinde yanıtlanır. Kişisel Verileri Koruma Kurulu'na şikâyette bulunma hakkın saklıdır.",
+      "AB'de yaşıyorsan GDPR kapsamındaki erişim, düzeltme, silme, taşınabilirlik ve itiraz haklarına da sahipsin."
+     ]
+    },
+    {
+     "h": "12. Çocuklar",
+     "p": [
+      "Oyun 13 yaşından küçük çocuklara yönelik değildir ve bu yaştaki çocuklardan bilerek veri toplamaz. 13 yaşından küçük bir çocuğun hesabı olduğunu düşünüyorsan bize yaz, hesabı sileriz."
+     ]
+    },
+    {
+     "h": "13. Değişiklikler",
+     "p": [
+      "Bu metin değişirse güncel hâli oyunda ve web sayfasında yayımlanır; önemli değişiklikler oyunda duyurulur."
+     ]
+    }
+   ]
+  },
+  "en": {
+   "title": "Privacy Policy",
+   "intro": "This policy explains which personal data Istanbul Street Runner (package com.lenstedreal.istanbulrunner) processes, why, and for how long. It also serves as the information notice under Turkish Law No. 6698 on the Protection of Personal Data (KVKK).",
+   "sections": [
+    {
+     "h": "1. Controller and contact",
+     "p": [
+      "The controller is the game's developer, LenstedReal. For privacy, deletion and data-protection requests: contact.istanbulrunner@proton.me",
+      "Include your in-game friend code so we can find your account quickly. Never send passwords, payment details or ID documents."
+     ]
+    },
+    {
+     "h": "2. Account and game data",
+     "p": [
+      "On first launch the game creates an anonymous game account without asking for an e-mail address or phone number. It stores: a random player ID, a random public ID, your nickname, friend code, best score, total coins, number of runs, friend list, players you blocked, reports you sent, daily mission progress and a cloud save (keys, unlocked districts, clothes).",
+      "At the end of every run the score, coins, distance, duration, number of revives, district and counts of jumps, rolls and power-ups are sent to the server. They are used to check that a score comes from a real run (anti-cheat).",
+      "Your account is protected by a session key kept in the phone's secure storage. The server only stores an irreversible hash of that key.",
+      "Settings, local scores and preferences stay on your phone."
+     ]
+    },
+    {
+     "h": "3. Online status",
+     "p": [
+      "While 'Show me online to friends' is on in Settings, the game sends an 'online' signal once a minute while it is open. The record is kept for at most 3 minutes and is only shown to your friends and in the total online count. If you turn the setting off, no signal is sent."
+     ]
+    },
+    {
+     "h": "4. IP address and security",
+     "p": [
+      "Your IP address is used briefly in memory with every request to limit excessive requests and prevent abuse. Security logs only keep a shortened irreversible hash of the IP address and are deleted after 90 days."
+     ]
+    },
+    {
+     "h": "5. Ads (Google AdMob)",
+     "p": [
+      "The free version shows Google AdMob ads. Google may process the advertising ID, IP address, device and app information and ad interactions to serve and measure ads and prevent fraud.",
+      "In the European Economic Area, the UK and Switzerland, Google's consent form (UMP) is shown when the game starts; personalised ads are only shown with your consent. You can change your choice in Settings → Privacy → Ad privacy options.",
+      "You can reset or delete the advertising ID in your phone's settings. Details: https://policies.google.com/privacy"
+     ]
+    },
+    {
+     "h": "6. Subscription and purchases",
+     "p": [
+      "The monthly ad-free membership is bought through Google Play. Google processes the payment details; we never see your card.",
+      "RevenueCat is used to verify the subscription status. Your player ID and Google Play's purchase record are sent to RevenueCat. Details: https://www.revenuecat.com/privacy"
+     ]
+    },
+    {
+     "h": "7. Purposes and legal bases",
+     "p": [
+      "Providing the game and its online features (leaderboard, friends, missions, cloud save): performance of a contract (KVKK art. 5/2-c, GDPR art. 6(1)(b)).",
+      "Anti-cheat, security and abuse prevention: legitimate interest (KVKK art. 5/2-f, GDPR art. 6(1)(f)).",
+      "Personalised ads: consent (UMP). Non-personalised ads and measurement: legitimate interest.",
+      "Managing the subscription: performance of a contract."
+     ]
+    },
+    {
+     "h": "8. Recipients and transfers",
+     "p": [
+      "The game server runs on Render (Render Services, Inc.) and the database on MongoDB Atlas (MongoDB, Inc.). These servers may be located outside Turkey. Ad data goes to Google; subscription data to Google Play and RevenueCat.",
+      "Transfers abroad rely on the safeguards in KVKK art. 9 (standard contractual clauses). Your data is not sold and not shared with anyone else, except where the law requires it."
+     ]
+    },
+    {
+     "h": "9. Retention",
+     "p": [
+      "Account data is kept until you delete your account.",
+      "Run verification records are deleted automatically after 180 days, runs from the old app version after 30 days, security logs after 90 days, account transfer codes after 24 hours and the online signal after 3 minutes."
+     ]
+    },
+    {
+     "h": "10. Deleting your account and data",
+     "p": [
+      "In the game: Settings → Privacy → Delete account. Your nickname, scores, friendships, missions, cloud save and all other account data on the server are deleted immediately, and the game data on the phone is reset.",
+      "If you cannot open the game, write to contact.istanbulrunner@proton.me with your friend code; the request is completed within 30 days. See 'Account deletion' on the website for details.",
+      "Deleting the account does not cancel a subscription; cancel it separately in Google Play → Subscriptions."
+     ]
+    },
+    {
+     "h": "11. Your rights",
+     "p": [
+      "Under KVKK art. 11 you may ask whether your data is processed, request information, correction or deletion, learn the third parties it was transferred to, object and claim compensation. Send requests to the e-mail above; they are answered within 30 days. You may also complain to the Turkish Personal Data Protection Board.",
+      "If you live in the EU you also have the GDPR rights of access, rectification, erasure, portability and objection."
+     ]
+    },
+    {
+     "h": "12. Children",
+     "p": [
+      "The game is not directed at children under 13 and does not knowingly collect data from them. If you believe a child under 13 has an account, write to us and we will delete it."
+     ]
+    },
+    {
+     "h": "13. Changes",
+     "p": [
+      "If this policy changes, the current version is published in the game and on the website; important changes are announced in the game."
+     ]
+    }
+   ]
+  }
+ },
+ "terms": {
+  "tr": {
+   "title": "Kullanım Koşulları",
+   "intro": "Istanbul Street Runner'ı indirerek veya oynayarak bu koşulları kabul etmiş olursun.",
+   "sections": [
+    {
+     "h": "1. Oyunu kullanma",
+     "p": [
+      "Oyunu kişisel ve ticari olmayan amaçla oynayabilirsin. Oyunun kodunu, grafiklerini veya seslerini kopyalamak, değiştirmek ya da dağıtmak yasaktır."
+     ]
+    },
+    {
+     "h": "2. Adil oyun",
+     "p": [
+      "Hile, değiştirilmiş uygulama, otomasyon veya sunucuya sahte skor göndermek yasaktır. Doğrulanamayan koşular sıralamaya alınmaz; tekrarlanan hilelerde hesap sıralamadan gizlenebilir veya silinebilir."
+     ]
+    },
+    {
+     "h": "3. Takma adlar ve davranış",
+     "p": [
+      "Takma adın küfür, hakaret, nefret söylemi, başkasının kimliğini taklit veya kişisel bilgi içeremez. Uygunsuz adlar değiştirilebilir. Oyuncuları engelleyebilir ve takma adlarını şikâyet edebilirsin."
+     ]
+    },
+    {
+     "h": "4. Sanal eşyalar",
+     "p": [
+      "Altın, anahtar, vapur jetonu ve kıyafetler yalnızca oyun içinde kullanılan sanal eşyalardır; parasal değerleri yoktur, nakde çevrilemez ve devredilemez."
+     ]
+    },
+    {
+     "h": "5. Reklamsız üyelik",
+     "p": [
+      "Aylık üyelik Google Play üzerinden satılır ve iptal edilene kadar her ay otomatik yenilenir. İptal, Google Play → Abonelikler'den yapılır ve dönem sonunda geçerli olur. Üyelik reklamları kaldırır, müzik değiştirmeyi sınırsız yapar ve bir kez 50 anahtarlık hoş geldin paketi verir. İadeler Google Play kurallarına tabidir."
+     ]
+    },
+    {
+     "h": "6. Hizmetin sürekliliği",
+     "p": [
+      "Çevrimiçi özellikler bakım veya arıza nedeniyle geçici olarak kullanılamayabilir. Oyunun özellikleri zamanla değişebilir."
+     ]
+    },
+    {
+     "h": "7. Sorumluluk",
+     "p": [
+      "Oyun 'olduğu gibi' sunulur. Yürürlükteki tüketici hakların saklı kalmak kaydıyla, oyunun kullanımından doğan dolaylı zararlardan sorumluluk kabul edilmez."
+     ]
+    },
+    {
+     "h": "8. Uygulanacak hukuk ve iletişim",
+     "p": [
+      "Bu koşullara Türkiye Cumhuriyeti hukuku uygulanır; tüketici olarak yerleşim yerindeki tüketici hakem heyeti ve mahkemelere başvurma hakkın saklıdır. İletişim: contact.istanbulrunner@proton.me"
+     ]
+    }
+   ]
+  },
+  "en": {
+   "title": "Terms of Use",
+   "intro": "By downloading or playing Istanbul Street Runner you accept these terms.",
+   "sections": [
+    {
+     "h": "1. Using the game",
+     "p": [
+      "You may play the game for personal, non-commercial purposes. Copying, modifying or distributing the game's code, graphics or sounds is not allowed."
+     ]
+    },
+    {
+     "h": "2. Fair play",
+     "p": [
+      "Cheating, modified apps, automation or sending fake scores to the server is not allowed. Runs that cannot be verified are left out of the leaderboard; repeated cheating can hide or delete the account."
+     ]
+    },
+    {
+     "h": "3. Nicknames and behaviour",
+     "p": [
+      "Nicknames must not contain swearing, insults, hate speech, impersonation or personal data. Inappropriate names may be changed. You can block players and report their nicknames."
+     ]
+    },
+    {
+     "h": "4. Virtual items",
+     "p": [
+      "Coins, keys, ferry tokens and clothes are virtual items for use in the game only; they have no monetary value and cannot be exchanged for money or transferred."
+     ]
+    },
+    {
+     "h": "5. Ad-free membership",
+     "p": [
+      "The monthly membership is sold through Google Play and renews automatically every month until cancelled. Cancel it in Google Play → Subscriptions; the cancellation applies at the end of the period. The membership removes ads, makes music changes unlimited and gives a one-time welcome pack of 50 keys. Refunds follow Google Play's rules."
+     ]
+    },
+    {
+     "h": "6. Availability",
+     "p": [
+      "Online features may be temporarily unavailable because of maintenance or outages. Game features may change over time."
+     ]
+    },
+    {
+     "h": "7. Liability",
+     "p": [
+      "The game is provided 'as is'. Without affecting your statutory consumer rights, no liability is accepted for indirect damage from using the game."
+     ]
+    },
+    {
+     "h": "8. Governing law and contact",
+     "p": [
+      "These terms are governed by the law of the Republic of Türkiye; your right as a consumer to apply to the consumer arbitration committees and courts where you live is reserved. Contact: contact.istanbulrunner@proton.me"
+     ]
+    }
+   ]
+  }
+ },
+ "licenses": {
+  "tr": {
+   "title": "Lisanslar ve kaynaklar",
+   "intro": "Oyunda kullanılan yazı tipleri, kütüphaneler, müzikler ve sesler.",
+   "sections": [
+    {
+     "h": "Grafik ve sesler",
+     "p": [
+      "Tüm 3D modeller (koşucu, tramvay, otobüs, sokaklar, semtler, martı) ve dokular bu oyun için kodla üretilmiştir; harici model veya görsel dosyası kullanılmaz.",
+      "Ses efektleri (zıplama, altın, çarpma, güçlendirici, kalkan, kaydırma, eğilme) bu oyun için üretilmiştir."
+     ]
+    },
+    {
+     "h": "Müzik",
+     "p": [
+      "Invincible – DEAF KEV",
+      "Fearless pt. II – Lost Sky feat. Chris Linton",
+      "Sky High – Elektronomia",
+      "Mortals – Warriyo feat. Laura Brehm",
+      "Royalty – Egzod, Maestro Chives & Neoni",
+      "Bu parçalar NoCopyrightSounds (NCS, ncs.io) yayınlarıdır. Kullanımları NCS kullanım koşullarına tabidir."
+     ]
+    },
+    {
+     "h": "Yazı tipleri",
+     "p": [
+      "Fredoka – Copyright The Fredoka Project Authors – SIL Open Font License 1.1",
+      "Nunito – Copyright The Nunito Project Authors – SIL Open Font License 1.1",
+      "Ionicons – Copyright Ionic – MIT License"
+     ]
+    },
+    {
+     "h": "Kütüphaneler",
+     "p": [
+      "three.js – Copyright three.js authors – MIT License",
+      "React, React Native – Copyright Meta Platforms, Inc. – MIT License",
+      "Expo ve Expo modülleri – Copyright 650 Industries, Inc. – MIT License",
+      "React Native Reanimated, Gesture Handler, Screens, Worklets – Copyright Software Mansion – MIT License",
+      "TanStack Query – Copyright Tanner Linsley – MIT License",
+      "React Native Async Storage – MIT License",
+      "React Native Keyboard Controller – MIT License",
+      "React Native Safe Area Context – MIT License",
+      "react-native-google-mobile-ads – Copyright Invertase – Apache License 2.0",
+      "react-native-purchases – Copyright RevenueCat, Inc. – MIT License",
+      "date-fns, dayjs – MIT License",
+      "Sunucu: FastAPI, Starlette, Pydantic (MIT), Uvicorn (BSD-3-Clause), PyMongo (Apache License 2.0), python-dotenv (BSD-3-Clause)"
+     ]
+    },
+    {
+     "h": "Lisans metinleri",
+     "p": [
+      "Lisans metinlerinin tam hâli: https://opensource.org/licenses (MIT, Apache-2.0, BSD-3-Clause) ve https://openfontlicense.org (SIL OFL 1.1)."
+     ]
+    }
+   ]
+  },
+  "en": {
+   "title": "Licenses and credits",
+   "intro": "Fonts, libraries, music and sounds used in the game.",
+   "sections": [
+    {
+     "h": "Graphics and sounds",
+     "p": [
+      "All 3D models (runner, tram, bus, streets, districts, seagull) and textures are generated in code for this game; no external model or image files are used.",
+      "The sound effects (jump, coin, crash, power-up, shield, swipe, roll) were made for this game."
+     ]
+    },
+    {
+     "h": "Music",
+     "p": [
+      "Invincible – DEAF KEV",
+      "Fearless pt. II – Lost Sky feat. Chris Linton",
+      "Sky High – Elektronomia",
+      "Mortals – Warriyo feat. Laura Brehm",
+      "Royalty – Egzod, Maestro Chives & Neoni",
+      "These tracks are NoCopyrightSounds (NCS, ncs.io) releases. Their use is subject to the NCS usage terms."
+     ]
+    },
+    {
+     "h": "Fonts",
+     "p": [
+      "Fredoka – Copyright The Fredoka Project Authors – SIL Open Font License 1.1",
+      "Nunito – Copyright The Nunito Project Authors – SIL Open Font License 1.1",
+      "Ionicons – Copyright Ionic – MIT License"
+     ]
+    },
+    {
+     "h": "Libraries",
+     "p": [
+      "three.js – Copyright three.js authors – MIT License",
+      "React, React Native – Copyright Meta Platforms, Inc. – MIT License",
+      "Expo and Expo modules – Copyright 650 Industries, Inc. – MIT License",
+      "React Native Reanimated, Gesture Handler, Screens, Worklets – Copyright Software Mansion – MIT License",
+      "TanStack Query – Copyright Tanner Linsley – MIT License",
+      "React Native Async Storage – MIT License",
+      "React Native Keyboard Controller – MIT License",
+      "React Native Safe Area Context – MIT License",
+      "react-native-google-mobile-ads – Copyright Invertase – Apache License 2.0",
+      "react-native-purchases – Copyright RevenueCat, Inc. – MIT License",
+      "date-fns, dayjs – MIT License",
+      "Server: FastAPI, Starlette, Pydantic (MIT), Uvicorn (BSD-3-Clause), PyMongo (Apache License 2.0), python-dotenv (BSD-3-Clause)"
+     ]
+    },
+    {
+     "h": "License texts",
+     "p": [
+      "Full license texts: https://opensource.org/licenses (MIT, Apache-2.0, BSD-3-Clause) and https://openfontlicense.org (SIL OFL 1.1)."
+     ]
+    }
+   ]
+  }
+ },
+ "deletion": {
+  "tr": {
+   "title": "Hesap silme",
+   "intro": "Istanbul Street Runner hesabını ve sunucudaki tüm verilerini nasıl silebileceğini anlatır.",
+   "sections": [
+    {
+     "h": "Oyunun içinden (önerilen)",
+     "p": [
+      "1. Oyunu aç ve Ayarlar'a gir.",
+      "2. Gizlilik bölümünde 'Hesabı sil'e dokun.",
+      "3. Onay ekranında 'Kalıcı olarak sil'i seç. İşlem hemen tamamlanır."
+     ]
+    },
+    {
+     "h": "Oyuna erişemiyorsan",
+     "p": [
+      "contact.istanbulrunner@proton.me adresine 'Hesap silme' konulu bir e-posta gönder ve oyundaki arkadaş kodunu yaz. Talebin en geç 30 gün içinde yerine getirilir ve sana bildirilir."
+     ]
+    },
+    {
+     "h": "Silinen veriler",
+     "p": [
+      "Takma ad, oyuncu kimlikleri, arkadaş kodu, skorlar, koşu kayıtları, arkadaşlıklar, engellemeler, şikâyetler, günlük görevler, bulut kaydı, oturum anahtarları ve aktarma kodları.",
+      "Güvenlik kayıtlarında yalnızca geri döndürülemez özetler kalır ve 90 gün içinde silinir."
+     ]
+    },
+    {
+     "h": "Abonelik",
+     "p": [
+      "Hesabı silmek Google Play aboneliğini iptal etmez. Google Play → Profil → Ödemeler ve abonelikler → Abonelikler'den iptal et."
+     ]
+    }
+   ]
+  },
+  "en": {
+   "title": "Account deletion",
+   "intro": "How to delete your Istanbul Street Runner account and all of your data on the server.",
+   "sections": [
+    {
+     "h": "In the game (recommended)",
+     "p": [
+      "1. Open the game and go to Settings.",
+      "2. In the Privacy section tap 'Delete account'.",
+      "3. Confirm with 'Delete permanently'. It is done immediately."
+     ]
+    },
+    {
+     "h": "If you cannot open the game",
+     "p": [
+      "Send an e-mail with the subject 'Account deletion' to contact.istanbulrunner@proton.me and include your in-game friend code. The request is completed within 30 days and you will be notified."
+     ]
+    },
+    {
+     "h": "What is deleted",
+     "p": [
+      "Nickname, player IDs, friend code, scores, run records, friendships, blocks, reports, daily missions, cloud save, session keys and transfer codes.",
+      "Security logs only keep irreversible hashes, which are deleted within 90 days."
+     ]
+    },
+    {
+     "h": "Subscription",
+     "p": [
+      "Deleting the account does not cancel a Google Play subscription. Cancel it in Google Play → Profile → Payments & subscriptions → Subscriptions."
+     ]
+    }
+   ]
+  }
+ }
+}
