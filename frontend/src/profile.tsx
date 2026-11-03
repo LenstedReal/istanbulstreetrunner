@@ -18,7 +18,7 @@ import {
 import { isDistrict, type DistrictId } from "@/src/game/districts";
 import { DEFAULT_GRAPHICS, parseGraphics, type GraphicsPrefs } from "@/src/game/quality/profiles";
 import { getLang, setLang, type Lang } from "@/src/i18n";
-import { addToken, DEFAULT_PROGRESS, parseProgress, tokenDistance, type Progress } from "@/src/progress";
+import { DEFAULT_PROGRESS, levelOf, parseProgress, recordLevelRun, type Progress } from "@/src/progress";
 import { afterRun, DEFAULT_RATE, finish, openStorePage, parseRate, postpone, rateDue, type RateState } from "@/src/rating";
 import { configureRevenueCat, isPremium, linkAccount, premiumExpiry } from "@/src/subscription";
 import { storage } from "@/src/utils/storage";
@@ -96,7 +96,8 @@ interface ProfileState {
 
 interface ProfileApi extends ProfileState {
   coins: number;
-  recordRun: (r: FinishedRun, session: RunSession | null) => Promise<{ isRecord: boolean; tokens: number; unlocked: DistrictId | null }>;
+  /** completed: the district goal was met for the first time; unlocked: district opened (the player moves there). */
+  recordRun: (r: FinishedRun, session: RunSession | null) => Promise<{ isRecord: boolean; completed: boolean; unlocked: DistrictId | null }>;
   setNickname: (n: string) => Promise<void>;
   setHaptics: (v: boolean) => Promise<void>;
   setSound: (v: boolean) => Promise<void>;
@@ -124,7 +125,8 @@ interface ProfileApi extends ProfileState {
   buyItem: (id: string) => Promise<boolean>;
   equipItem: (id: string) => Promise<void>;
   selectDistrict: (id: DistrictId) => Promise<void>;
-  tokenAtForRun: () => number | null;
+  /** 0-based level of the district the next run starts in. */
+  levelForRun: () => number;
   deleteAccount: () => Promise<void>;
   createTransferCode: () => Promise<{ code: string; expires_at: string }>;
   redeemTransferCode: (code: string) => Promise<void>;
@@ -723,13 +725,9 @@ export function ProfileProvider({ children }: { children: React.ReactNode }) {
       const localScores = [...s.localScores, { score: r.score, coins: r.coins, distance: r.distance, date: new Date().toISOString() }]
         .sort((a, b) => b.score - a.score)
         .slice(0, 10);
-      let progress = s.progress;
-      let unlocked: DistrictId | null = null;
-      if (r.token) {
-        const out = addToken(progress, r.district);
-        progress = out.progress;
-        unlocked = out.unlocked;
-      }
+      const level = recordLevelRun(s.progress, r.district, r.distance, r.coins);
+      const progress = level.progress;
+      const { completed, unlocked } = level;
       const rate = afterRun(s.rate);
       patch({ bestScore, totalCoins, localScores, progress, rate, lastRun: { status: "pending", newRecord: false } });
       await Promise.all([
@@ -739,8 +737,12 @@ export function ProfileProvider({ children }: { children: React.ReactNode }) {
         storage.setItem(KEYS.progress, JSON.stringify(progress)),
         storage.setItem(KEYS.rate, JSON.stringify(rate)),
       ]);
-      if (r.token) scheduleSave();
-      const tokens = progress.tokens[r.district] ?? 0;
+      scheduleSave();
+      if (unlocked) {
+        // The next run starts in the new district: get a fresh server session for it.
+        session.current = null;
+        void prefetchRun();
+      }
 
       // Server submission runs in the background; the result screen does not wait for it.
       void (async () => {
@@ -782,9 +784,9 @@ export function ProfileProvider({ children }: { children: React.ReactNode }) {
           else patch({ lastRun: { status: "notRanked", newRecord: false } });
         }
       })();
-      return { isRecord, tokens, unlocked };
+      return { isRecord, completed, unlocked };
     },
-    [patch, scheduleSave, recoverOnline, refreshMissions],
+    [patch, scheduleSave, recoverOnline, refreshMissions, prefetchRun],
   );
 
   // ------------------------------------------------------------- settings
@@ -1004,10 +1006,7 @@ export function ProfileProvider({ children }: { children: React.ReactNode }) {
     [patch, prefetchRun, scheduleSave],
   );
 
-  const tokenAtForRun = useCallback(() => {
-    const p = stateRef.current.progress;
-    return tokenDistance(p, p.current);
-  }, []);
+  const levelForRun = useCallback(() => levelOf(stateRef.current.progress.current), []);
 
   const answerRate = useCallback(
     async (answer: "rate" | "later" | "never") => {
@@ -1056,7 +1055,7 @@ export function ProfileProvider({ children }: { children: React.ReactNode }) {
       buyItem,
       equipItem,
       selectDistrict,
-      tokenAtForRun,
+      levelForRun,
       deleteAccount,
       createTransferCode,
       redeemTransferCode,
@@ -1067,7 +1066,7 @@ export function ProfileProvider({ children }: { children: React.ReactNode }) {
       state, look, recordRun, setNickname, setHaptics, setSound, setMusic, setShadows, setMusicTrack, markTutorialSeen, resetTutorial,
       resetLocalData, ensureOnline, recoverOnline, addKeys, spendKeys, registerPlay, registerSongChange, setAdFree, takeRunSession,
       setGraphics, setLanguage, setOnlineVisible, markHintSeen, refreshMissions, claimMission, buyItem, equipItem, selectDistrict,
-      tokenAtForRun, deleteAccount, createTransferCode, redeemTransferCode, resolveConflictNewProfile, retryConnect, answerRate,
+      levelForRun, deleteAccount, createTransferCode, redeemTransferCode, resolveConflictNewProfile, retryConnect, answerRate,
     ],
   );
 

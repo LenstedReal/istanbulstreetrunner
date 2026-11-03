@@ -15,7 +15,7 @@ import { ReviveSheet } from "@/src/components/game/ReviveSheet";
 import { Sheet, SheetActions } from "@/src/components/game/Sheet";
 import { Toast } from "@/src/components/game/Toast";
 import { TutorialOverlay } from "@/src/components/game/TutorialOverlay";
-import { OBSTACLES, type DistrictId } from "@/src/game/districts";
+import { DISTRICTS, nextDistrict, OBSTACLES, type DistrictId } from "@/src/game/districts";
 import {
   EngineCallbacks,
   GameEvent,
@@ -30,6 +30,7 @@ import { effectiveQuality, pickAutoQuality, resolveProfile } from "@/src/game/qu
 import { probeCaps } from "@/src/game/render/pipeline";
 import { fmt, t, useT } from "@/src/i18n";
 import { MAX_REVIVES, reviveCost, useProfile, type RunSession } from "@/src/profile";
+import { GOALS, goalMet, levelOf } from "@/src/progress";
 import { makeStyles, useTheme } from "@/src/theme";
 import { fonts, radius, spacing } from "@/src/tokens";
 
@@ -63,14 +64,14 @@ export default function GameScreen() {
   const [hud, setHud] = useState<HudState>(EMPTY_HUD);
   const [result, setResult] = useState<RunResult | null>(null);
   const [isRecord, setIsRecord] = useState(false);
-  const [tokenInfo, setTokenInfo] = useState<{ tokens: number; unlocked: DistrictId | null } | null>(null);
+  const [levelInfo, setLevelInfo] = useState<{ completed: boolean; unlocked: DistrictId | null; goalDone: boolean }>({ completed: false, unlocked: null, goalDone: false });
   const [showTutorial, setShowTutorial] = useState(false);
   const [glReady, setGlReady] = useState(false);
   const [glKey, setGlKey] = useState(0);
   const [introDone, setIntroDone] = useState(false);
   const [revives, setRevives] = useState(0);
   const [adBusy, setAdBusy] = useState(false);
-  const [toast, setToast] = useState<{ text: string; icon: "bulb" | "boat" | "warning" } | null>(null);
+  const [toast, setToast] = useState<{ text: string; icon: "bulb" | "boat" | "warning" | "flag" } | null>(null);
   const [transferCode, setTransferCode] = useState("");
   const [conflictMsg, setConflictMsg] = useState<string | null>(null);
 
@@ -84,6 +85,9 @@ export default function GameScreen() {
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const showTutorialRef = useRef(false);
   const touch = useRef<{ x: number; y: number; fired: boolean } | null>(null);
+  /** The current district's goal was already done when the run started / its toast was shown. */
+  const goalDoneRef = useRef(false);
+  const goalToastRef = useRef(false);
   // Refs mirror the latest render for engine callbacks and gestures (updated after commit, never during render).
   useEffect(() => {
     modeRef.current = mode;
@@ -98,7 +102,7 @@ export default function GameScreen() {
     return `${effectiveQuality(g)}:${g.shadows}`;
   }, []);
 
-  const showToast = useCallback((text: string, icon: "bulb" | "boat" | "warning" = "bulb", ms = 2600) => {
+  const showToast = useCallback((text: string, icon: "bulb" | "boat" | "warning" | "flag" = "bulb", ms = 2600) => {
     if (toastTimer.current) clearTimeout(toastTimer.current);
     setToast({ text, icon });
     toastTimer.current = setTimeout(() => setToast(null), ms);
@@ -175,7 +179,18 @@ export default function GameScreen() {
 
   // Engine callbacks only use refs and stable setters, so one object built when the engine is created stays valid.
   const makeCallbacks = useCallback((): EngineCallbacks => ({
-    onHud: (s) => setHud(s),
+    onHud: (s) => {
+      setHud(s);
+      // Goal reached during the run: say so once (the district opens when the run ends).
+      if (goalToastRef.current) return;
+      const p = profileRef.current;
+      const district = p.progress.current;
+      if (goalMet(GOALS[district], s.distance, s.coins)) {
+        goalToastRef.current = true;
+        const next = nextDistrict(district);
+        showToast(next ? t("goal.reached", { name: t(DISTRICTS[next].name) }) : t("goal.reachedLast"), "flag", 3200);
+      }
+    },
     onCrash: (r) => {
       setResult(r);
       audio.pauseMusic();
@@ -188,7 +203,8 @@ export default function GameScreen() {
       const out = await profileRef.current.recordRun({ ...r, revives: revivesRef.current }, sessionRef.current);
       sessionRef.current = null;
       setIsRecord(out.isRecord);
-      setTokenInfo(r.token ? { tokens: out.tokens, unlocked: out.unlocked } : null);
+      setLevelInfo({ completed: out.completed, unlocked: out.unlocked, goalDone: goalDoneRef.current });
+      if (out.unlocked) engineRef.current?.setDistrict(out.unlocked);
       if (out.isRecord && profileRef.current.haptics) {
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => undefined);
       }
@@ -257,12 +273,14 @@ export default function GameScreen() {
     setHud(EMPTY_HUD);
     setResult(null);
     setIsRecord(false);
-    setTokenInfo(null);
+    setLevelInfo({ completed: false, unlocked: null, goalDone: false });
     revivesRef.current = 0;
     setRevives(0);
     setShowTutorial(!p.tutorialSeen);
     sessionRef.current = p.takeRunSession();
-    engine.start({ district: p.progress.current, seed: sessionRef.current?.seed, tokenAt: p.tokenAtForRun() });
+    goalDoneRef.current = p.progress.done.includes(p.progress.current);
+    goalToastRef.current = goalDoneRef.current;
+    engine.start({ district: p.progress.current, seed: sessionRef.current?.seed, level: p.levelForRun() });
     setMode("playing");
     audio.startMusic();
     if (p.haptics) Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => undefined);
@@ -479,6 +497,8 @@ export default function GameScreen() {
           keys={profile.keys}
           adBusy={adBusy}
           district={profile.progress.current}
+          level={levelOf(profile.progress.current) + 1}
+          goal={profile.progress.done.includes(profile.progress.current) ? null : GOALS[profile.progress.current]}
           onlineCount={profile.onlineCount}
           account={profile.account}
           waking={profile.waking}
@@ -531,8 +551,9 @@ export default function GameScreen() {
           bestScore={profile.bestScore}
           status={profile.lastRun.status}
           serverRecord={profile.lastRun.newRecord}
-          tokens={tokenInfo?.tokens ?? null}
-          unlocked={tokenInfo?.unlocked ?? null}
+          completed={levelInfo.completed}
+          unlocked={levelInfo.unlocked}
+          goalDone={levelInfo.goalDone}
           rateAsk={profile.rateAsk}
           onRate={(answer) => void profile.answerRate(answer)}
           onRetry={startRun}

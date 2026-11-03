@@ -2,40 +2,66 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 
 import { coinBalance, enqueue, mergeSave, parsePending, parseSaveData, PENDING_MAX, PENDING_MAX_AGE_MS, toSaveData } from "@/src/cloudsave";
-import { addToken, DEFAULT_PROGRESS, mergeProgress, parseProgress, tokenDistance, tokensMissing } from "@/src/progress";
+import { DISTRICT_ORDER } from "@/src/game/districts";
+import { levelTuning } from "@/src/game/patterns";
+import { GOALS, levelOf, mergeProgress, parseProgress, recordLevelRun, topLevel } from "@/src/progress";
 import { buy, CATALOG, DEFAULT_WARDROBE, equip, lookOf, parseWardrobe } from "@/src/wardrobe";
 
-test("three tokens open the next district, once", () => {
+test("a district goal in one run opens the next district and moves the player there", () => {
   let p = parseProgress(null);
-  assert.equal(tokensMissing(p, "istiklal"), 3);
-  assert.equal(tokenDistance(p, "istiklal"), 450);
-  let out = addToken(p, "istiklal");
-  assert.equal(out.unlocked, null);
-  p = addToken(out.progress, "istiklal").progress;
-  assert.equal(tokenDistance(p, "istiklal"), 1150);
-  out = addToken(p, "istiklal");
+  assert.equal(levelOf(p.current), 0);
+  let out = recordLevelRun(p, "istiklal", 599, 500);
+  assert.equal(out.completed, false);
+  out = recordLevelRun(out.progress, "istiklal", 2000, 39);
+  assert.equal(out.completed, false, "both distance and coins are needed in the same run");
+  assert.deepEqual(out.progress.best.istiklal, { distance: 2000, coins: 500 });
+  out = recordLevelRun(out.progress, "istiklal", GOALS.istiklal.distance, GOALS.istiklal.coins);
+  assert.equal(out.completed, true);
   assert.equal(out.unlocked, "galata");
-  assert.ok(out.progress.unlocked.includes("galata"));
-  assert.equal(tokensMissing(out.progress, "istiklal"), 0);
-  assert.equal(tokenDistance(out.progress, "istiklal"), null);
-  assert.equal(addToken(out.progress, "istiklal").unlocked, null);
-  assert.equal(tokenDistance(DEFAULT_PROGRESS, "bosphorus"), null);
+  assert.equal(out.progress.current, "galata");
+  assert.equal(topLevel(out.progress), 1);
+  p = out.progress;
+  out = recordLevelRun(p, "istiklal", 5000, 500);
+  assert.equal(out.completed, false, "a goal counts once");
+  assert.equal(out.unlocked, null);
 });
 
-test("broken progress data falls back to the first district", () => {
+test("goals grow with every level and the last level completes without unlocking", () => {
+  for (let i = 1; i < DISTRICT_ORDER.length; i++) {
+    const a = GOALS[DISTRICT_ORDER[i - 1]];
+    const b = GOALS[DISTRICT_ORDER[i]];
+    assert.ok(b.distance > a.distance && b.coins > a.coins);
+  }
+  const all = parseProgress(JSON.stringify({ current: "bosphorus", unlocked: DISTRICT_ORDER }));
+  const out = recordLevelRun(all, "bosphorus", 99999, 9999);
+  assert.equal(out.completed, true);
+  assert.equal(out.unlocked, null);
+  assert.equal(out.progress.current, "bosphorus");
+});
+
+test("levels speed the game up and pack obstacles tighter", () => {
+  const l0 = levelTuning(0);
+  const l4 = levelTuning(4);
+  assert.ok(l4.startSpeed > l0.startSpeed && l4.startSpeed <= 32);
+  assert.ok(l4.distanceOffset > l0.distanceOffset);
+  assert.deepEqual(levelTuning(99), l4);
+  assert.deepEqual(levelTuning(-3), l0);
+});
+
+test("old saves: opened districts count as done; broken data falls back", () => {
   assert.deepEqual(parseProgress("{nope").unlocked, ["istiklal"]);
-  const p = parseProgress(JSON.stringify({ current: "mars", unlocked: ["galata", "x"], tokens: { istiklal: 9 } }));
+  const p = parseProgress(JSON.stringify({ current: "mars", unlocked: ["galata", "x"], tokens: { istiklal: 3 } }));
   assert.deepEqual(p.unlocked, ["istiklal", "galata"]);
-  assert.equal(p.current, "istiklal");
-  assert.equal(p.tokens.istiklal, 3);
+  assert.deepEqual(p.done, ["istiklal"]);
+  assert.equal(p.current, "galata");
 });
 
-test("progress merge never loses an unlocked district", () => {
-  const a = parseProgress(JSON.stringify({ current: "galata", unlocked: ["istiklal", "galata"], tokens: { galata: 1 } }));
-  const b = parseProgress(JSON.stringify({ unlocked: ["istiklal"], tokens: { istiklal: 3, galata: 2 } }));
+test("progress merge never loses an opened district or a best run", () => {
+  const a = parseProgress(JSON.stringify({ current: "galata", unlocked: ["istiklal", "galata"], best: { galata: { distance: 300, coins: 10 } } }));
+  const b = parseProgress(JSON.stringify({ unlocked: ["istiklal"], best: { galata: { distance: 100, coins: 50 } } }));
   const m = mergeProgress(a, b);
   assert.deepEqual(m.unlocked, ["istiklal", "galata"]);
-  assert.equal(m.tokens.galata, 2);
+  assert.deepEqual(m.best.galata, { distance: 300, coins: 50 });
   assert.equal(m.current, "galata");
 });
 

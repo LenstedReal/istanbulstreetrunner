@@ -175,3 +175,20 @@ Bu ortamda **çalıştırılan** testler:
   - render sırasında `Date.now()` / `new Date()` (`IntroOverlay`, `LegalScreen`, liderlik tarihi) kaldırıldı;
   - Reanimated değerleri `.get()` / `.set()` ile kullanılıyor.
 - **Oyunu değerlendir**: 5. oyundan sonra sonuç ekranında kısa bir soru (Değerlendir / Sonra / Bir daha sorma), en fazla 3 kez; Ayarlar → Oyun → "Oyunu değerlendir" her zaman açık. Değerlendirme karşılığında ödül verilmez (Play politikası). Play Store uygulaması yoksa web sayfası açılır.
+
+---
+
+## 10. Logo, mağaza görselleriyle uyum, seviyeler, fontlar (ek commit)
+
+- **Logo**: verdiğin logo uygulama ikonu (1024), adaptive icon (Android maskesine uygun, kenarlar logonun kendi renkleriyle), açılış ekranı ve favicon olarak kullanıldı; Play için 512 px ikon `docs/store/play-icon-512.png`.
+- **Oyun içi görüntü mağaza görsellerine yaklaştırıldı** (yanıltıcı görsel olmaması için):
+  - İstiklal ve Galata'da sokağın sonunda **Galata Kulesi** (taş gövde, kemerli pencere halkası, balkon, kurşuni külah);
+  - tramvay önü logodaki gibi (beyaz tavan, büyük ön cam, sarı kare farlar, siyah tampon, T pantograf);
+  - **bloklu koşucu** (küp kafa, kutu saç ve şapka, küp eller), simit arabasında üç büyük simit;
+  - low-poly yapraklı ağaçlar, beyaz glob lambalı siyah direkler, beyaz pencere çerçeveleri, katlarda balkonlar, ışıklı dükkân vitrinleri, saksılar ve bank;
+  - daha mavi gökyüzü, daha temiz hava, beyaz bulutlar, daha canlı renk ayarı, daha büyük altınlar.
+- **Seviyeler**: her semt bir seviye. Hedef (tek koşuda mesafe + altın) tamamlanınca sıradaki semt açılır ve oyuncu oraya geçer. Hedefler: İstiklal 600 m + 40, Galata 900 m + 70, Eminönü 1200 m + 100, Köprü 1500 m + 130, Boğaz 2000 m + 170. Her seviyede başlangıç hızı +1 m/s ve engeller daha sık. Koşu sırasında hedefe ulaşınca bildirim çıkar; sonuç ekranı hedef durumunu veya "yeni semt açıldı" yazar.
+- **Görevler seviyeyle zorlaşır**: sunucu, oyuncunun açtığı semt sayısına göre günlük görev hedeflerini seviye başına %30, ödülleri de birlikte büyütür.
+- **Fontlar**: Fredoka'da eksik olan İ, Ş, ş, Ğ, ğ harfleri fontun kendi nokta, kısa ve çengel işaretleriyle eklendi (OFL izin verir); önceden bu harfler başka fontla basılıyordu. Türkçe büyük harf dönüşümü düzeltildi ("GİZLİLİK"), başlık "İSTANBUL".
+- **Mağaza görselleri**: Play kuralları ekran görüntülerinin oyunu doğru göstermesini ister. APK'yı test ettikten sonra mağazaya oyundan alınmış gerçek ekran görüntüleri koy.
+

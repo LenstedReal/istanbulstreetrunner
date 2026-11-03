@@ -20,6 +20,10 @@ interface Props {
   keys: number;
   adBusy: boolean;
   district: DistrictId;
+  /** 1-based level of the district. */
+  level: number;
+  /** Goal of the current district, or null when it is already done. */
+  goal: { distance: number; coins: number } | null;
   onlineCount: number | null;
   account: AccountState;
   waking: boolean;
@@ -61,9 +65,17 @@ export function MainMenu(p: Props) {
           </View>
           <Pressable style={styles.chip} onPress={p.onPier} testID="menu-district" accessibilityRole="button">
             <Ionicons name="location" size={16} color={colors.onSurfaceInverse} />
-            <Text style={styles.chipText}>{t(DISTRICTS[p.district].name)}</Text>
+            <Text style={styles.chipText}>
+              {t("level.n", { n: p.level })} · {t(DISTRICTS[p.district].name)}
+            </Text>
           </Pressable>
         </View>
+        {p.goal ? (
+          <Pressable style={[styles.chip, styles.goalChip]} onPress={p.onPier} testID="menu-goal" accessibilityRole="button">
+            <Ionicons name="flag" size={16} color={colors.onBrandTertiary} />
+            <Text style={[styles.chipText, { color: colors.onBrandTertiary }]}>{t("goal.short", { distance: fmt(p.goal.distance), coins: fmt(p.goal.coins) })}</Text>
+          </Pressable>
+        ) : null}
         {p.account === "online" && p.onlineCount !== null && p.onlineCount > 0 ? (
           <View style={styles.chip} testID="menu-online">
             <View style={styles.dot} />
@@ -144,6 +156,7 @@ const useStyles = makeStyles((colors) => ({
   chipRow: { flexDirection: "row", gap: spacing.sm, flexWrap: "wrap" },
   chip: { flexDirection: "row", alignItems: "center", gap: spacing.xs, backgroundColor: colors.scrim, paddingHorizontal: spacing.md, height: 30, borderRadius: radius.pill },
   chipText: { fontFamily: fonts.textBold, fontSize: 14, color: colors.onSurfaceInverse },
+  goalChip: { backgroundColor: colors.brandTertiary, alignSelf: "flex-start" },
   dot: { width: 8, height: 8, borderRadius: 4, backgroundColor: colors.success },
   bottom: { alignItems: "center", gap: spacing.lg },
   play: { alignSelf: "stretch" },

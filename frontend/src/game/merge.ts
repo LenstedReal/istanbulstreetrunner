@@ -39,6 +39,7 @@ function materialKey(m: AnyMat): string {
     m.map ? m.map.uuid : "-",
     m.side,
     (m as THREE.MeshBasicMaterial).fog === false ? "nf" : "f",
+    (m as THREE.MeshLambertMaterial).flatShading ? "flat" : "smooth",
   ].join("|");
 }
 

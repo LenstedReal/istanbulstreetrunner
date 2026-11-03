@@ -2,6 +2,7 @@
 // at least one lane that can be passed by running, jumping or rolling, and the
 // lane used for pick-ups is one of them.
 import { DISTRICTS, OBSTACLES, type DistrictId, type ObstacleKind } from "./districts";
+import { START_SPEED } from "./constants";
 import type { Rng } from "./rng";
 
 export type Lane = -1 | 0 | 1;
@@ -122,4 +123,10 @@ export function isFair(plan: RowPlan): boolean {
   };
   // The pick-up lane must itself be passable; a lane-blocking tram or bus never sits in it.
   return ([-1, 0, 1] as Lane[]).some(passable) && passable(plan.freeLane);
+}
+
+/** Start speed and difficulty offset for a district level (0 = first). */
+export function levelTuning(level: number): { startSpeed: number; distanceOffset: number } {
+  const l = Math.max(0, Math.min(4, Math.floor(level)));
+  return { startSpeed: START_SPEED + l, distanceOffset: l * 250 };
 }

@@ -74,7 +74,9 @@ export function IntroOverlay({ ready, onDone }: Props) {
         <Image source={require("../../../assets/images/icon.png")} style={styles.logo} contentFit="contain" />
       </Animated.View>
       <Text style={styles.title} testID="intro-title">
-        ISTANBUL{"\n"}STREET RUNNER
+        {t("menu.titleTop")}
+        {"\n"}
+        {t("menu.titleBottom")}
       </Text>
       <View style={styles.bottom}>
         <View style={styles.track} testID="intro-progress">

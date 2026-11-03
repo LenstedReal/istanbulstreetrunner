@@ -76,8 +76,8 @@ test("the street builds and bakes in every district at every detail level", { sk
       world.group.traverse((o) => {
         if ((o as import("three").Mesh).isMesh) meshes++;
       });
-      // 8 chunks: baked parts + instanced dashes, bollards and windows.
-      assert.ok(meshes > 8 && meshes < 8 * 16, `${id}/${detail}: ${meshes} meshes`);
+      // 8 chunks: about 12 baked parts + instanced dashes, bollards, windows and frames (was ~90 meshes each).
+      assert.ok(meshes > 8 && meshes <= 8 * 20, `${id}/${detail}: ${meshes} meshes`);
     }
     world.dispose();
   }

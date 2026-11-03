@@ -463,7 +463,8 @@ async def get_missions(db, player_id: str) -> dict:
     doc = await db.missions.find_one({"player_id": player_id, "day": day})
     if doc:
         return doc
-    fresh = {"player_id": player_id, "day": day, "missions": missions.missions_for(player_id, day), "expire_at": now() + timedelta(days=3)}
+    level = missions.level_from_save(await get_save(db, player_id))
+    fresh = {"player_id": player_id, "day": day, "level": level, "missions": missions.missions_for(player_id, day, level), "expire_at": now() + timedelta(days=3)}
     try:
         await db.missions.insert_one(fresh)
     except DuplicateKeyError:

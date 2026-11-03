@@ -70,50 +70,24 @@ export class Runner {
     // Head group: face, eyes, hair styles and cap.
     const h = this.head;
     h.position.set(0, 1.62, 0);
-    const face = new THREE.Mesh(f.sphere, m.skin);
-    face.scale.setScalar(0.23);
-    h.add(face);
-    for (const x of [-0.08, 0.08]) {
-      const eye = new THREE.Mesh(f.sphereLow, m.eye);
-      eye.scale.set(0.03, 0.035, 0.02);
-      eye.position.set(x, 0.03, -0.21);
-      h.add(eye);
-    }
-    const neck = f.part(m.skin, 0.12, 0.12, 0.12, 0, -0.3);
-    h.add(neck);
+    // Blocky toy style (as in the app icon): cube head, box hair, box cap.
+    h.add(f.part(m.skin, 0.44, 0.44, 0.42, 0, -0.22));
+    for (const x of [-0.09, 0.09]) h.add(f.part(m.eye, 0.06, 0.07, 0.02, x, -0.02, -0.215));
+    h.add(f.part(m.skin, 0.16, 0.12, 0.16, 0, -0.32));
     const short = new THREE.Group();
-    const s1 = new THREE.Mesh(f.sphere, m.hair);
-    s1.scale.set(0.235, 0.15, 0.235);
-    s1.position.set(0, 0.1, 0.03);
-    short.add(s1);
+    short.add(f.part(m.hair, 0.46, 0.1, 0.44, 0, 0.18), f.part(m.hair, 0.46, 0.26, 0.08, 0, -0.06, 0.2));
     const long = new THREE.Group();
-    const l1 = new THREE.Mesh(f.sphere, m.hair);
-    l1.scale.set(0.245, 0.17, 0.245);
-    l1.position.set(0, 0.09, 0.02);
-    long.add(l1, f.part(m.hair, 0.4, 0.42, 0.14, 0, -0.32, 0.14));
+    long.add(f.part(m.hair, 0.47, 0.12, 0.45, 0, 0.17), f.part(m.hair, 0.47, 0.56, 0.1, 0, -0.36, 0.2));
     const bun = new THREE.Group();
-    const b1 = new THREE.Mesh(f.sphere, m.hair);
-    b1.scale.set(0.24, 0.16, 0.24);
-    b1.position.set(0, 0.09, 0.02);
-    const b2 = new THREE.Mesh(f.sphere, m.hair);
-    b2.scale.setScalar(0.11);
-    b2.position.set(0, 0.22, 0.14);
-    bun.add(b1, b2);
+    bun.add(f.part(m.hair, 0.46, 0.11, 0.44, 0, 0.18), f.part(m.hair, 0.46, 0.26, 0.08, 0, -0.06, 0.2), f.part(m.hair, 0.2, 0.18, 0.2, 0, 0.24, 0.12));
     const curly = new THREE.Group();
-    for (const [x, y, z, s] of [[0, 0.12, 0.02, 0.2], [-0.13, 0.06, 0.05, 0.13], [0.13, 0.06, 0.05, 0.13], [0, 0.04, 0.16, 0.15]] as const) {
-      const c = new THREE.Mesh(f.sphereLow, m.hair);
-      c.scale.setScalar(s);
-      c.position.set(x, y, z);
-      curly.add(c);
-    }
+    curly.add(f.part(m.hair, 0.52, 0.16, 0.5, 0, 0.16), f.part(m.hair, 0.52, 0.3, 0.12, 0, -0.1, 0.2));
     this.hairStyles = { short, long, bun, curly };
     h.add(short, long, bun, curly);
-    const capDome = new THREE.Mesh(f.sphere, m.cap);
-    capDome.scale.set(0.25, 0.14, 0.25);
-    capDome.position.set(0, 0.12, 0);
-    const visor = f.part(m.cap, 0.3, 0.05, 0.24, 0, 0.08, -0.23);
-    h.add(capDome, visor);
-    this.capParts = [capDome, visor];
+    const capTop = f.part(m.cap, 0.48, 0.16, 0.46, 0, 0.2);
+    const visor = f.part(m.cap, 0.4, 0.05, 0.24, 0, 0.2, -0.32);
+    h.add(capTop, visor);
+    this.capParts = [capTop, visor];
     b.add(h);
 
     const limb = (pivot: THREE.Group, x: number, y: number, w: number, hgt: number, mat: THREE.Material, foot: boolean) => {
@@ -124,10 +98,7 @@ export class Runner {
         pivot.add(f.part(m.sole, w + 0.04, 0.04, 0.37, 0, -hgt - 0.04, -0.07));
       } else {
         pivot.add(f.part(m.trim, w + 0.02, 0.06, w + 0.06, 0, -hgt + 0.02));
-        const hand = new THREE.Mesh(f.sphere, m.skin);
-        hand.scale.setScalar(0.09);
-        hand.position.set(0, -hgt - 0.04, 0);
-        pivot.add(hand);
+        pivot.add(f.part(m.skin, 0.15, 0.15, 0.15, 0, -hgt - 0.13));
       }
       b.add(pivot);
     };

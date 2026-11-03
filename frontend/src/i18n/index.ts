@@ -87,3 +87,8 @@ export function shortDate(iso: string): string {
   if (!y || !m || !d) return iso;
   return current === "tr" ? `${d}.${m}.${y}` : `${d}/${m}/${y}`;
 }
+
+/** Upper case that is right for Turkish (i -> İ, ı -> I) whatever the phone's locale. */
+export function upper(s: string): string {
+  return current === "tr" ? s.replace(/i/g, "İ").replace(/ı/g, "I").toUpperCase() : s.toUpperCase();
+}

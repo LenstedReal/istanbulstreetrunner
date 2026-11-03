@@ -27,6 +27,8 @@ export class ObjectFactory {
   readonly torus = new THREE.TorusGeometry(0.16, 0.06, 6, 12);
   readonly octa = new THREE.OctahedronGeometry(0.42, 0);
   readonly ico = new THREE.IcosahedronGeometry(0.42, 0);
+  /** Faceted low-poly foliage. */
+  readonly icoTree = new THREE.IcosahedronGeometry(1, 1);
 
   readonly mats = {
     tramRed: lambert(SCENE.tramRed),
@@ -75,6 +77,7 @@ export class ObjectFactory {
     beak: lambert(0xf2a12b),
     token: lambert(0x2f78c4, { emissive: 0x0f3e70, emissiveIntensity: 0.6 }),
     tokenGold: lambert(0xffcf4a, { emissive: 0x8a5a00, emissiveIntensity: 0.7 }),
+    tramLamp: lambert(0xffd23f, { emissive: 0xffc400, emissiveIntensity: 0.6 }),
   };
 
   /** Vertex-coloured materials shared by every baked object. */
@@ -157,20 +160,23 @@ export class ObjectFactory {
   private makeTram() {
     const g = new THREE.Group();
     const m = this.mats;
+    // Same look as the app icon: red body, white roof cap, big windscreen, square
+    // yellow lamps with a white plate, wide black bumper and a T pantograph.
     g.add(this.part(m.tramDark, 1.7, 0.55, 6.8, 0, 0.05));
-    g.add(this.part(m.tramRed, 1.9, 1.8, 7.0, 0, 0.6));
-    g.add(this.part(m.tramCream, 1.95, 0.3, 7.2, 0, 2.4));
-    g.add(this.part(m.tramDark, 1.2, 0.12, 5.0, 0, 2.7));
-    g.add(this.part(m.tramDark, 0.08, 0.9, 0.08, 0, 2.8));
-    g.add(this.part(m.tramDark, 0.08, 0.08, 2.0, 0, 3.7));
-    g.add(this.part(m.tramCream, 1.96, 0.18, 7.05, 0, 1.15));
+    g.add(this.part(m.tramRed, 1.9, 1.85, 7.0, 0, 0.6));
+    g.add(this.part(m.white, 1.86, 0.4, 6.9, 0, 2.42));
+    g.add(this.part(m.white, 1.7, 0.12, 6.7, 0, 2.8));
+    g.add(this.part(m.tramDark, 0.1, 0.75, 0.1, 0, 2.9));
+    g.add(this.part(m.tramDark, 1.4, 0.1, 0.1, 0, 3.6));
+    g.add(this.part(m.white, 1.96, 0.16, 7.05, 0, 1.12));
     for (let i = 0; i < 5; i++) g.add(this.part(m.tramGlass, 1.96, 0.75, 0.85, 0, 1.45, -2.6 + i * 1.3));
-    g.add(this.part(m.tramGlass, 1.4, 0.75, 0.12, 0, 1.45, 3.5));
+    g.add(this.part(m.tramDark, 1.62, 1.0, 0.1, 0, 1.33, 3.5));
+    g.add(this.part(m.tramGlass, 1.5, 0.88, 0.12, 0, 1.39, 3.52));
     g.add(this.part(m.tramGlass, 1.4, 0.75, 0.12, 0, 1.45, -3.5));
-    g.add(this.part(m.headlight, 0.3, 0.25, 0.08, -0.6, 0.95, 3.52));
-    g.add(this.part(m.headlight, 0.3, 0.25, 0.08, 0.6, 0.95, 3.52));
-    g.add(this.part(m.tramCream, 1.0, 0.3, 0.08, 0, 2.05, 3.52));
-    g.add(this.part(m.black, 0.45, 0.22, 0.09, 0, 0.62, 3.52));
+    g.add(this.part(m.tramLamp, 0.38, 0.32, 0.08, -0.56, 0.78, 3.53));
+    g.add(this.part(m.tramLamp, 0.38, 0.32, 0.08, 0.56, 0.78, 3.53));
+    g.add(this.part(m.white, 0.42, 0.1, 0.08, 0, 0.9, 3.53));
+    g.add(this.part(m.black, 2.12, 0.5, 0.55, 0, 0.08, 3.38));
     for (const z of [-1.95, 1.95]) g.add(this.part(m.tramDark, 1.97, 1.0, 0.05, 0, 0.75, z));
     for (const z of [-2.3, 2.3]) {
       g.add(this.part(m.black, 1.5, 0.35, 1.6, 0, 0.0, z));
@@ -191,9 +197,8 @@ export class ObjectFactory {
     for (const x of [-0.78, 0.78]) g.add(this.at(this.cyl, m.black, x, 0.3, 0, 0.3, 0.1, 0.3, 0, 0, Math.PI / 2));
     g.add(this.part(m.metal, 0.05, 0.05, 0.9, -0.45, 0.9, 0));
     g.add(this.part(m.metal, 0.05, 0.05, 0.9, 0.45, 0.9, 0));
-    for (let i = 0; i < 6; i++) {
-      g.add(this.at(this.torus, m.simit, -0.4 + (i % 3) * 0.4, 0.97 + Math.floor(i / 3) * 0.1, i < 3 ? -0.22 : 0.22, 1, 1, 1, Math.PI / 2));
-    }
+    // Three big simits in a row, as street vendors stack them.
+    for (let i = 0; i < 3; i++) g.add(this.at(this.torus, m.simit, -0.44 + i * 0.44, 1.0, 0, 1.45, 1.45, 1.45, Math.PI / 2));
     return g;
   }
 

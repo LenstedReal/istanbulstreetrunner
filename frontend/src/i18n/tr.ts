@@ -3,7 +3,7 @@
 export const tr = {
   // app & menu
   "app.name": "Istanbul Street Runner",
-  "menu.titleTop": "ISTANBUL",
+  "menu.titleTop": "İSTANBUL",
   "menu.titleBottom": "STREET RUNNER",
   "menu.play": "OYNA",
   "menu.adLoading": "Reklam yükleniyor…",
@@ -92,7 +92,7 @@ export const tr = {
   "district.bridge": "Galata Köprüsü",
   "district.bosphorus": "Boğaz kıyısı · Ortaköy",
   "pier.title": "İskele",
-  "pier.subtitle": "Vapur jetonlarıyla yeni semtlere geç",
+  "pier.subtitle": "Semt seç; her semt bir seviye",
   "pier.locked": "Kilitli · {have}/3 jeton",
   "pier.open": "Buradan başla",
   "pier.current": "Seçili",
@@ -320,6 +320,18 @@ export const tr = {
   "rate.never": "Bir daha sorma",
   "settings.rate": "Oyunu değerlendir",
   "settings.rateHelp": "Google Play'de puan ver ve yorum yaz",
+  "level.n": "Seviye {n}",
+  "goal.text": "Hedef: tek koşuda {distance} m ve {coins} altın",
+  "goal.short": "Hedef: {distance} m · {coins} altın",
+  "goal.done": "Hedef tamamlandı",
+  "goal.reached": "Hedef tamam! Koşu bitince {name} açılacak",
+  "goal.reachedLast": "Son hedef tamam! Artık rekor için koş",
+  "over.levelUp": "{name} açıldı! Seviye {n}: daha hızlı, daha zor.",
+  "over.allDone": "Tüm semtleri bitirdin! Şimdi dünya rekoru için koş.",
+  "over.goalRun": "Bu koşu: {distance} m · {coins} altın",
+  "pier.lockedBy": "Kilitli · önce {name} hedefini tamamla",
+  "pier.best": "En iyi: {distance} m · {coins} altın",
+  "pier.levelInfo": "Her semt bir seviye. Hedefi tek koşuda tamamla, sıradaki semt açılsın. Her seviyede oyun hızlanır, engeller sıklaşır, günlük görevler büyür.",
 };
 
 export type Strings = typeof tr;

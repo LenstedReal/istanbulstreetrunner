@@ -9,7 +9,7 @@ import { DISTRICTS, type DistrictId } from "@/src/game/districts";
 import type { RunResult } from "@/src/game/engine";
 import { fmt, useT } from "@/src/i18n";
 import type { RunStatus } from "@/src/profile";
-import { TOKENS_PER_DISTRICT } from "@/src/progress";
+import { GOALS, goalMet, levelOf } from "@/src/progress";
 import { makeStyles, useTheme } from "@/src/theme";
 import { fonts, radius, spacing } from "@/src/tokens";
 
@@ -19,16 +19,19 @@ interface Props {
   bestScore: number;
   status: RunStatus;
   serverRecord: boolean;
-  /** Token pieces now held in this district (shown when one was collected). */
-  tokens: number | null;
+  /** The district goal was completed in this run for the first time. */
+  completed: boolean;
+  /** District opened by this run. */
   unlocked: DistrictId | null;
+  /** The goal of this district was already done before the run. */
+  goalDone: boolean;
   rateAsk?: boolean;
   onRate?: (answer: "rate" | "later" | "never") => void;
   onRetry: () => void;
   onHome: () => void;
 }
 
-export function GameOverSheet({ result, isRecord, bestScore, status, serverRecord, tokens, unlocked, rateAsk, onRate, onRetry, onHome }: Props) {
+export function GameOverSheet({ result, isRecord, bestScore, status, serverRecord, completed, unlocked, goalDone, rateAsk, onRate, onRetry, onHome }: Props) {
   const styles = useStyles();
   const { colors } = useTheme();
   const t = useT();
@@ -65,11 +68,27 @@ export function GameOverSheet({ result, isRecord, bestScore, status, serverRecor
           <Text style={styles.statLabel}>{t("over.best")}</Text>
         </View>
       </View>
-      {tokens !== null ? (
-        <View style={styles.token} testID="game-over-token">
-          <Ionicons name="boat" size={18} color={colors.info} />
-          <Text style={styles.tokenText}>
-            {unlocked ? t("pier.unlocked", { name: t(DISTRICTS[unlocked].name) }) : t("over.token", { have: Math.min(tokens, TOKENS_PER_DISTRICT) })}
+      {unlocked ? (
+        <View style={[styles.token, { backgroundColor: colors.brandTertiary }]} testID="game-over-level-up">
+          <Ionicons name="trophy" size={18} color={colors.onBrandTertiary} />
+          <Text style={[styles.tokenText, { color: colors.onBrandTertiary }]}>{t("over.levelUp", { name: t(DISTRICTS[unlocked].name), n: levelOf(unlocked) + 1 })}</Text>
+        </View>
+      ) : completed ? (
+        <View style={[styles.token, { backgroundColor: colors.brandTertiary }]} testID="game-over-all-done">
+          <Ionicons name="ribbon" size={18} color={colors.onBrandTertiary} />
+          <Text style={[styles.tokenText, { color: colors.onBrandTertiary }]}>{t("over.allDone")}</Text>
+        </View>
+      ) : !goalDone ? (
+        <View style={styles.goal} testID="game-over-goal">
+          <View style={styles.goalRow}>
+            <Ionicons name="flag" size={16} color={colors.info} />
+            <Text style={styles.tokenText}>
+              {t("goal.short", { distance: fmt(GOALS[result.district].distance), coins: fmt(GOALS[result.district].coins) })}
+            </Text>
+          </View>
+          <Text style={styles.note}>
+            {t("over.goalRun", { distance: fmt(result.distance), coins: fmt(result.coins) })}
+            {goalMet(GOALS[result.district], result.distance, result.coins) ? " ✓" : ""}
           </Text>
         </View>
       ) : null}
@@ -129,6 +148,8 @@ const useStyles = makeStyles((colors) => ({
   statLabel: { fontFamily: fonts.text, fontSize: 12, color: colors.muted },
   token: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: spacing.sm, backgroundColor: colors.surfaceTertiary, borderRadius: radius.md, padding: spacing.sm },
   tokenText: { fontFamily: fonts.textHeavy, fontSize: 14, color: colors.onSurfaceTertiary, flexShrink: 1 },
+  goal: { gap: 4, alignItems: "center", backgroundColor: colors.surfaceTertiary, borderRadius: radius.md, padding: spacing.sm },
+  goalRow: { flexDirection: "row", alignItems: "center", gap: spacing.xs },
   rate: { gap: spacing.sm, backgroundColor: colors.surfaceTertiary, borderRadius: radius.md, padding: spacing.md },
   rateTitle: { fontFamily: fonts.textHeavy, fontSize: 15, color: colors.onSurfaceTertiary, textAlign: "center" },
   rateRow: { flexDirection: "row", gap: spacing.sm },

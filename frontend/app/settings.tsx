@@ -11,7 +11,7 @@ import { ApiError } from "@/src/api";
 import { audio, MUSIC_TRACKS } from "@/src/audio";
 import { ChunkyButton } from "@/src/components/ChunkyButton";
 import { effectiveQuality, QUALITY_ORDER, type QualityPref } from "@/src/game/quality/profiles";
-import { useT } from "@/src/i18n";
+import { upper, useT } from "@/src/i18n";
 import { APP_VERSION, useProfile } from "@/src/profile";
 import { openStorePage } from "@/src/rating";
 import Purchases, { configureRevenueCat, isPremium, loadMonthlyPackage, premiumExpiry } from "@/src/subscription";
@@ -227,7 +227,7 @@ export default function SettingsScreen() {
 
       <KeyboardAwareScrollView contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + spacing.xl }]} bottomOffset={24} keyboardShouldPersistTaps="handled">
         {/* Nickname */}
-        <Text style={styles.section}>{t("settings.nickname")}</Text>
+        <Text style={styles.section}>{upper(t("settings.nickname"))}</Text>
         <View style={styles.card}>
           <TextInput
             testID="settings-nickname-input"
@@ -255,7 +255,7 @@ export default function SettingsScreen() {
         </View>
 
         {/* Account */}
-        <Text style={styles.section}>{t("settings.account")}</Text>
+        <Text style={styles.section}>{upper(t("settings.account"))}</Text>
         <View style={styles.card} testID="settings-account-card">
           <View style={styles.rowItem}>
             <Ionicons name={online ? "cloud-done" : "cloud-offline-outline"} size={22} color={online ? colors.success : colors.muted} />
@@ -303,7 +303,7 @@ export default function SettingsScreen() {
         </View>
 
         {/* Subscription */}
-        <Text style={styles.section}>{t("sub.section")}</Text>
+        <Text style={styles.section}>{upper(t("sub.section"))}</Text>
         <View style={[styles.card, { borderColor: colors.brandTertiary }]} testID="settings-adfree-card">
           <View style={styles.rowItem}>
             <View style={[styles.ctrlIcon, { backgroundColor: colors.brandTertiary }]}>
@@ -332,7 +332,7 @@ export default function SettingsScreen() {
         </View>
 
         {/* Graphics */}
-        <Text style={styles.section}>{t("settings.graphics")}</Text>
+        <Text style={styles.section}>{upper(t("settings.graphics"))}</Text>
         <View style={styles.card} testID="settings-graphics-card">
           <Text style={styles.rowTitle}>{t("settings.quality")}</Text>
           <View style={styles.chips}>
@@ -356,7 +356,7 @@ export default function SettingsScreen() {
         </View>
 
         {/* Sound */}
-        <Text style={styles.section}>{t("settings.sound")}</Text>
+        <Text style={styles.section}>{upper(t("settings.sound"))}</Text>
         <View style={styles.card}>
           <SwitchRow testID="settings-sound-switch" title={t("settings.sfx")} help={t("settings.sfxHelp")} value={profile.sound} onChange={(v) => profile.setSound(v)} />
           <View style={styles.divider} />
@@ -400,7 +400,7 @@ export default function SettingsScreen() {
         </View>
 
         {/* Game */}
-        <Text style={styles.section}>{t("settings.game")}</Text>
+        <Text style={styles.section}>{upper(t("settings.game"))}</Text>
         <View style={styles.card}>
           <SwitchRow
             testID="settings-haptics-switch"
@@ -435,7 +435,7 @@ export default function SettingsScreen() {
         </View>
 
         {/* Language */}
-        <Text style={styles.section}>{t("settings.language")}</Text>
+        <Text style={styles.section}>{upper(t("settings.language"))}</Text>
         <View style={styles.card}>
           <View style={styles.chips}>
             <Chip testID="settings-lang-auto" label={t("settings.langAuto")} active={profile.langAuto} onPress={() => profile.setLanguage("auto")} />
@@ -445,7 +445,7 @@ export default function SettingsScreen() {
         </View>
 
         {/* Privacy */}
-        <Text style={styles.section}>{t("settings.privacy")}</Text>
+        <Text style={styles.section}>{upper(t("settings.privacy"))}</Text>
         <View style={styles.card} testID="settings-privacy-card">
           <NavRow testID="settings-privacy-policy" icon="shield-checkmark-outline" title={t("settings.privacyPolicy")} help={t("settings.privacyHelp")} onPress={() => router.push("/privacy")} chevron />
           <View style={styles.divider} />
@@ -489,7 +489,7 @@ export default function SettingsScreen() {
         </View>
 
         {/* Controls */}
-        <Text style={styles.section}>{t("settings.controls")}</Text>
+        <Text style={styles.section}>{upper(t("settings.controls"))}</Text>
         <View style={styles.card}>
           {(
             [
@@ -572,7 +572,7 @@ const useStyles = makeStyles((colors) => ({
   title: { fontFamily: fonts.display, fontSize: 26, color: colors.onSurface },
   close: { width: 44, height: 44, alignItems: "center", justifyContent: "center" },
   content: { padding: spacing.lg, gap: spacing.sm },
-  section: { fontFamily: fonts.textHeavy, fontSize: 12, letterSpacing: 1.5, textTransform: "uppercase", color: colors.muted, marginTop: spacing.md },
+  section: { fontFamily: fonts.textHeavy, fontSize: 12, letterSpacing: 1.5, color: colors.muted, marginTop: spacing.md },
   card: { backgroundColor: colors.surfaceSecondary, borderWidth: 2, borderColor: colors.border, borderRadius: radius.lg, padding: spacing.lg, gap: spacing.md },
   input: {
     height: 52,

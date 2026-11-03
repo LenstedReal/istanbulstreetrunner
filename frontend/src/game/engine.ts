@@ -27,7 +27,7 @@ import {
 } from "./constants";
 import { DISTRICTS, type DistrictId } from "./districts";
 import { OBSTACLE_DEFS, ObjectFactory, type ObstacleDef, type ObstacleKind, type PowerupKind } from "./objects";
-import { planRow, type Lane } from "./patterns";
+import { levelTuning, planRow, type Lane } from "./patterns";
 import { internalSize, type DeviceCaps, type QualityProfile, PROFILES } from "./quality/profiles";
 import { FpsMeter, initialScale, updateScale, type ScaleState } from "./quality/scale";
 import { centerPixelLooksDrawn, probeCaps, RenderPipeline, type PostParams } from "./render/pipeline";
@@ -96,6 +96,8 @@ export interface RunOptions {
   seed?: number;
   /** Distance where this run's ferry token piece appears (null = none). */
   tokenAt?: number | null;
+  /** District level (0 = first). Every level starts faster and packs obstacles tighter. */
+  level?: number;
 }
 
 type Phase = "idle" | "running" | "paused" | "crashing" | "crashed" | "over";
@@ -188,6 +190,8 @@ export class RunnerEngine {
   // Run state
   private rng: Rng = createRng(randomSeed());
   private district: DistrictId = "istiklal";
+  private baseSpeed = START_SPEED;
+  private distanceOffset = 0;
   private elapsed = 0;
   private speed = START_SPEED;
   private distance = 0;
@@ -229,7 +233,7 @@ export class RunnerEngine {
   private keyPending = false;
   private pool = new Map<string, THREE.Object3D[]>();
   private dummy = new THREE.Object3D();
-  private post: PostParams = { exposure: 1.05, flash: 0, flashColor: new THREE.Color(1, 1, 1), saturation: 1.08, warmth: 0.025, vignette: 0.35 };
+  private post: PostParams = { exposure: 1.05, flash: 0, flashColor: new THREE.Color(1, 1, 1), saturation: 1.16, warmth: 0.02, vignette: 0.3 };
 
   constructor(
     private gl: ExpoWebGLRenderingContext,
@@ -502,6 +506,10 @@ export class RunnerEngine {
     this.rng = createRng(opts.seed ?? randomSeed());
     this.resetRun();
     this.tokenAt = opts.tokenAt ?? null;
+    const tuning = levelTuning(opts.level ?? 0);
+    this.baseSpeed = tuning.startSpeed;
+    this.distanceOffset = tuning.distanceOffset;
+    this.speed = this.baseSpeed;
     this.phase = "running";
     this.ensureLoop();
   }
@@ -576,7 +584,7 @@ export class RunnerEngine {
     this.stumbleT = 0;
     this.gull.group.visible = false;
     this.invulnerable = 2.0;
-    this.speed = Math.max(START_SPEED, this.speed * 0.8);
+    this.speed = Math.max(this.baseSpeed, this.speed * 0.8);
     this.phase = "running";
     this.lastTime = 0;
     this.ensureLoop();
@@ -800,7 +808,7 @@ export class RunnerEngine {
 
   private step(dt: number) {
     this.elapsed += dt;
-    const target = Math.min(MAX_SPEED, START_SPEED * Math.pow(SPEED_STEP, Math.floor(this.elapsed / SPEED_INTERVAL)));
+    const target = Math.min(MAX_SPEED, this.baseSpeed * Math.pow(SPEED_STEP, Math.floor(this.elapsed / SPEED_INTERVAL)));
     this.speed += Math.sign(target - this.speed) * Math.min(Math.abs(target - this.speed), 3 * dt);
     const dz = this.speed * dt;
     this.pz -= dz;
@@ -925,7 +933,7 @@ export class RunnerEngine {
 
   // -------------------------------------------------------------- spawning
   private difficulty() {
-    return Math.min(1, this.distance / 1600);
+    return Math.min(1, (this.distance + this.distanceOffset) / 1600);
   }
 
   private rowGap() {
@@ -960,7 +968,7 @@ export class RunnerEngine {
   }
 
   private spawnRow(z: number) {
-    const row = planRow(this.rng, this.district, this.distance);
+    const row = planRow(this.rng, this.district, this.distance + this.distanceOffset);
     for (const o of row.obstacles) this.place(o.kind, o.lane, z + o.dz);
     for (const c of row.coins) {
       if (c.shape === "arc") this.coinArc(c.lane, z);
@@ -1046,6 +1054,7 @@ export class RunnerEngine {
       if (n >= MAX_COINS) break;
       d.position.set(c.x, c.y, c.z);
       d.rotation.set(Math.PI / 2, 0, c.rot);
+      d.scale.setScalar(1.15);
       d.updateMatrix();
       this.coinMesh.setMatrixAt(n++, d.matrix);
     }
@@ -1250,7 +1259,7 @@ export class RunnerEngine {
         this.stumbleT = STUMBLE_TIME;
         this.invulnerable = 0.6;
         this.shake = 0.4;
-        this.speed = Math.max(START_SPEED, this.speed * 0.92);
+        this.speed = Math.max(this.baseSpeed, this.speed * 0.92);
         this.cb.onEvent("stumble");
         this.emitHud();
         return;

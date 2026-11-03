@@ -338,7 +338,7 @@
     {
      "h": "Yazı tipleri",
      "p": [
-      "Fredoka – Copyright The Fredoka Project Authors – SIL Open Font License 1.1",
+      "Fredoka – Copyright The Fredoka Project Authors – SIL Open Font License 1.1 (oyunda Türkçe İ, Ş, ş, Ğ, ğ harfleri fontun kendi işaretleriyle eklenmiş sürümü kullanılır)",
       "Nunito – Copyright The Nunito Project Authors – SIL Open Font License 1.1",
       "Ionicons – Copyright Ionic – MIT License"
      ]
@@ -393,7 +393,7 @@
     {
      "h": "Fonts",
      "p": [
-      "Fredoka – Copyright The Fredoka Project Authors – SIL Open Font License 1.1",
+      "Fredoka – Copyright The Fredoka Project Authors – SIL Open Font License 1.1 (the game uses a version with the Turkish letters İ, Ş, ş, Ğ, ğ added from the font's own marks)",
       "Nunito – Copyright The Nunito Project Authors – SIL Open Font License 1.1",
       "Ionicons – Copyright Ionic – MIT License"
      ]

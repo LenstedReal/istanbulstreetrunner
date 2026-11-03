@@ -14,7 +14,7 @@
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/adaptive-icon.png",
-        "backgroundColor": "#D62828"
+        "backgroundColor": "#3FA7EE"
       },
       "package": "com.lenstedreal.istanbulrunner",
       "permissions": [
@@ -43,7 +43,7 @@
         "expo-splash-screen",
         {
           "image": "./assets/images/splash-image.png",
-          "imageWidth": 220,
+          "imageWidth": 200,
           "resizeMode": "contain",
           "backgroundColor": "#2A2626"
         }

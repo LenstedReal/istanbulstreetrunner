@@ -38,18 +38,41 @@ def _rng(player_id: str, day: str) -> random.Random:
     return random.Random(seed)
 
 
-def missions_for(player_id: str, day: str) -> list[dict]:
+DISTRICTS = ("istiklal", "galata", "eminonu", "bridge", "bosphorus")
+MAX_LEVEL = len(DISTRICTS) - 1
+
+
+def level_from_save(save: dict | None) -> int:
+    """Player level = districts opened (from the cloud save) - 1, clamped to 0..4."""
+    try:
+        unlocked = (save or {}).get("data", {}).get("progress", {}).get("unlocked", [])
+        opened = {d for d in unlocked if d in DISTRICTS} | {"istiklal"}
+        return max(0, min(MAX_LEVEL, len(opened) - 1))
+    except AttributeError:
+        return 0
+
+
+def _scale(value: int, level: int) -> int:
+    """+30 % per level, rounded to a friendly number."""
+    v = value * (1 + 0.3 * level)
+    step = 50 if v >= 500 else 10 if v >= 50 else 1
+    return int(round(v / step) * step)
+
+
+def missions_for(player_id: str, day: str, level: int = 0) -> list[dict]:
+    """Three missions; targets and rewards grow with the player's district level."""
+    level = max(0, min(MAX_LEVEL, int(level)))
     rng = _rng(player_id, day)
     kinds = rng.sample(sorted(POOL.keys()), 3)
     out = []
     for i, kind in enumerate(kinds):
         targets, _ = POOL[kind]
-        level = rng.randrange(len(targets))
-        target = targets[level]
+        tier = rng.randrange(len(targets))
+        target = _scale(targets[tier], level)
         if rng.random() < 0.5:
-            reward_keys, reward_coins = 1 + level, 0
+            reward_keys, reward_coins = 1 + tier + level // 2, 0
         else:
-            reward_keys, reward_coins = 0, 100 * (level + 1)
+            reward_keys, reward_coins = 0, _scale(100 * (tier + 1), level)
         out.append(
             {
                 "id": f"m{i}",

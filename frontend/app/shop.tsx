@@ -6,7 +6,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { CoinIcon } from "@/src/components/CoinIcon";
 import { ScreenHeader } from "@/src/components/ScreenHeader";
 import { StatPill } from "@/src/components/StatPill";
-import { fmt, useT } from "@/src/i18n";
+import { fmt, upper, useT } from "@/src/i18n";
 import { useProfile } from "@/src/profile";
 import { makeStyles, useTheme } from "@/src/theme";
 import { fonts, radius, spacing } from "@/src/tokens";
@@ -44,7 +44,7 @@ export default function ShopScreen() {
           const items = CATALOG.filter((i) => i.kind === kind);
           return (
             <View key={kind} style={styles.section}>
-              <Text style={styles.sectionTitle}>{t(items[0].section)}</Text>
+              <Text style={styles.sectionTitle}>{upper(t(items[0].section))}</Text>
               <View style={styles.grid}>
                 {items.map((it) => {
                   const owned = w.owned.includes(it.id);
@@ -89,7 +89,7 @@ const useStyles = makeStyles((colors) => ({
   content: { padding: spacing.lg, gap: spacing.lg },
   msg: { fontFamily: fonts.textBold, fontSize: 14, color: colors.error, textAlign: "center" },
   section: { gap: spacing.sm },
-  sectionTitle: { fontFamily: fonts.textHeavy, fontSize: 12, letterSpacing: 1.5, textTransform: "uppercase", color: colors.muted },
+  sectionTitle: { fontFamily: fonts.textHeavy, fontSize: 12, letterSpacing: 1.5, color: colors.muted },
   grid: { flexDirection: "row", flexWrap: "wrap", gap: spacing.sm },
   item: { width: "31%", flexGrow: 1, maxWidth: 160, alignItems: "center", gap: spacing.xs, backgroundColor: colors.surfaceSecondary, borderWidth: 2.5, borderColor: colors.border, borderBottomWidth: 5, borderRadius: radius.lg, padding: spacing.sm },
   preview: { width: 56, height: 56, borderRadius: 28, alignItems: "center", justifyContent: "center", borderWidth: 2, borderColor: colors.borderStrong },

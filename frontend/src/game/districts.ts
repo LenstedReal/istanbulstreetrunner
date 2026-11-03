@@ -86,7 +86,7 @@ export const DISTRICTS: Record<DistrictId, DistrictDef> = {
   istiklal: {
     id: "istiklal", name: "district.istiklal",
     obstacles: ["tram", "cart", "barrier", "sign", "pillar", "icecream"],
-    sky: 0x3f93c9, haze: 0xf6dfc0, fog: 0xf0d8bd, ground: 0x8f8678, street: "cobble", rails: true, left: "buildings", right: "buildings",
+    sky: 0x2c8ee6, haze: 0xd9ecf6, fog: 0xdfe9ee, ground: 0x8f8678, street: "cobble", rails: true, left: "buildings", right: "buildings",
     buildingColors: [0xe9d5b8, 0xd9a37a, 0xc97b5a, 0xf2e4d0, 0xa9bcc9, 0xb98b6e, 0xe0c7a2, 0x8fa6b2, 0xd7b27a, 0xcfa78a],
     awningColors: [0xc8372d, 0x2a7f62, 0x2d6a9f, 0xd9a441],
     sun: { color: 0xfff1d6, intensity: 2.2, dir: [26, 30, -6] }, hemi: { sky: 0xd6ecff, ground: 0x9a8468, intensity: 0.9 }, exposure: 1.05,
@@ -95,7 +95,7 @@ export const DISTRICTS: Record<DistrictId, DistrictDef> = {
   galata: {
     id: "galata", name: "district.galata",
     obstacles: ["cart", "barrier", "sign", "cat", "fishcrates", "flowercart"],
-    sky: 0x4a8fc4, haze: 0xf3d9c2, fog: 0xeed4bd, ground: 0x857a6c, street: "cobble", rails: false, left: "buildings", right: "buildings",
+    sky: 0x3191e0, haze: 0xdcebf3, fog: 0xe2e8ea, ground: 0x857a6c, street: "cobble", rails: false, left: "buildings", right: "buildings",
     buildingColors: [0xd9b38c, 0xb5654a, 0xe7cfa8, 0x9fb0a8, 0xc98d64, 0xf0dcc0, 0x7d8f99, 0xcc9c6a],
     awningColors: [0x8c2f39, 0x2f6f73, 0xc7862f],
     sun: { color: 0xffe2b8, intensity: 2.0, dir: [-24, 26, -10] }, hemi: { sky: 0xd9e8ff, ground: 0x8d7558, intensity: 0.85 }, exposure: 1.08,
@@ -104,7 +104,7 @@ export const DISTRICTS: Record<DistrictId, DistrictDef> = {
   eminonu: {
     id: "eminonu", name: "district.eminonu",
     obstacles: ["cart", "barrier", "pigeons", "porter", "tray", "sign"],
-    sky: 0x5a9bd0, haze: 0xf5e4c8, fog: 0xf1dcc0, ground: 0x93887a, street: "cobble", rails: false, left: "buildings", right: "buildings",
+    sky: 0x3a98e2, haze: 0xe4eef2, fog: 0xe6eaea, ground: 0x93887a, street: "cobble", rails: false, left: "buildings", right: "buildings",
     buildingColors: [0xe2c9a0, 0xcaa77a, 0xb88f6a, 0xd8c3a5, 0xa38b72, 0xeadbc2],
     awningColors: [0xb33a2e, 0x2b5f8a, 0xd08a2c, 0x3d7a4a],
     sun: { color: 0xfff4dc, intensity: 2.3, dir: [20, 34, -4] }, hemi: { sky: 0xe0efff, ground: 0x9b876c, intensity: 0.95 }, exposure: 1.02,
@@ -113,7 +113,7 @@ export const DISTRICTS: Record<DistrictId, DistrictDef> = {
   bridge: {
     id: "bridge", name: "district.bridge",
     obstacles: ["lines", "buckets", "bus", "barrier", "scooter"],
-    sky: 0x6aa6d6, haze: 0xf6e2cc, fog: 0xe9dccb, ground: 0x3c6e8f, street: "bridge", rails: true, left: "railing", right: "railing",
+    sky: 0x4aa2e4, haze: 0xe6f0f4, fog: 0xe4ecf0, ground: 0x3c6e8f, street: "bridge", rails: true, left: "railing", right: "railing",
     buildingColors: [0xd8c8b0],
     awningColors: [0x2d6a9f],
     sun: { color: 0xffe6c4, intensity: 2.1, dir: [30, 22, -14] }, hemi: { sky: 0xd8ecff, ground: 0x4e7590, intensity: 1.0 }, exposure: 1.06,

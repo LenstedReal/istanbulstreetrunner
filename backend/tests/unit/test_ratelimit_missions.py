@@ -1,6 +1,6 @@
 from datetime import datetime, timedelta, timezone
 
-from app.missions import POOL, RunStats, apply_run, clamp_stats, missions_for
+from app.missions import POOL, RunStats, apply_run, clamp_stats, level_from_save, missions_for
 from app.ratelimit import RateLimiter
 from app.revenuecat import entitlement_active
 
@@ -65,3 +65,20 @@ def test_revenuecat_entitlement():
     assert not entitlement_active({"subscriber": {"entitlements": {"premium": {"expires_date": past}}}}, now=now)
     assert entitlement_active({"subscriber": {"entitlements": {"premium": {"expires_date": None}}}}, now=now)
     assert not entitlement_active({"subscriber": {"entitlements": {}}}, now=now)
+
+
+def test_missions_get_harder_with_level():
+    base = missions_for("player-9", "2026-11-04", 0)
+    hard = missions_for("player-9", "2026-11-04", 4)
+    assert [m["kind"] for m in base] == [m["kind"] for m in hard]
+    for b, h in zip(base, hard):
+        assert h["target"] > b["target"]
+        assert h["reward_keys"] >= b["reward_keys"] and h["reward_coins"] >= b["reward_coins"]
+    assert missions_for("player-9", "2026-11-04", 99) == hard
+
+
+def test_level_from_save():
+    assert level_from_save(None) == 0
+    assert level_from_save({"data": {"progress": {"unlocked": ["istiklal", "galata", "x"]}}}) == 1
+    assert level_from_save({"data": {"progress": {"unlocked": ["istiklal", "galata", "eminonu", "bridge", "bosphorus"]}}}) == 4
+    assert level_from_save({"data": "broken"}) == 0

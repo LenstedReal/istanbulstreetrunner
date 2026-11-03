@@ -12,13 +12,14 @@ const pick = <T,>(arr: readonly T[]) => arr[Math.floor(Math.random() * arr.lengt
 
 const MAX_BUILDINGS_PER_SIDE = 5;
 const MAX_WINDOWS = 420;
-const MAX_BALCONIES = 10;
+const MAX_BALCONIES = 18;
 const MAX_CUMBAS = 6;
 const MAX_ROOF_PROPS = 8;
 const BOLLARDS = 20;
 const TREES = 3;
 const LAMPS = 2;
 const BINS = 2;
+const PLANTERS = 2;
 const RAILING_POSTS = 11;
 
 /** 0: bare buildings, 1: balconies and signs, 2: every prop (from the quality profile). */
@@ -47,6 +48,11 @@ interface SharedMats {
   metal: THREE.Material;
   lampGlow: THREE.Material;
   bridgeRail: THREE.Material;
+  globe: THREE.Material;
+  frame: THREE.Material;
+  shopGlass: THREE.Material;
+  pot: THREE.Material;
+  wood: THREE.Material;
 }
 
 /** Per-district building and awning materials, created once and shared by every chunk. */
@@ -73,6 +79,11 @@ class Chunk {
   private cumbas: THREE.Group[] = [];
   private roofProps: THREE.Mesh[] = [];
   private windows: THREE.InstancedMesh;
+  /** Cream window frames behind every window (same matrices, larger). */
+  private frames: THREE.InstancedMesh;
+  private shopGlass: THREE.Mesh[] = [];
+  private planters: THREE.Group[] = [];
+  private bench: THREE.Group;
   private trees: THREE.Group[] = [];
   private palms: THREE.Group[] = [];
   private lamps: THREE.Group[] = [];
@@ -178,6 +189,11 @@ class Chunk {
       awning.visible = false;
       g.add(awning);
       this.awnings.push(awning);
+      // Warm lit shop window on the ground floor.
+      const glass = new THREE.Mesh(f.box, shared.shopGlass);
+      glass.visible = false;
+      g.add(glass);
+      this.shopGlass.push(glass);
     }
     for (let i = 0; i < MAX_BALCONIES; i++) {
       const b = new THREE.Group();
@@ -207,18 +223,20 @@ class Chunk {
     }
     this.windows = new THREE.InstancedMesh(f.box, shared.window, MAX_WINDOWS);
     this.group.add(this.windows);
+    this.frames = new THREE.InstancedMesh(f.box, shared.frame, MAX_WINDOWS);
+    this.group.add(this.frames);
 
     for (let i = 0; i < TREES; i++) {
       const t = new THREE.Group();
       const trunk = new THREE.Mesh(f.cylLow, shared.treeTrunk);
       trunk.scale.set(0.14, 1.4, 0.14);
       trunk.position.y = 0.7;
-      const leaf = new THREE.Mesh(f.sphereLow, shared.treeLeaf);
-      leaf.scale.set(1.3, 1.5, 1.3);
-      leaf.position.y = 2.1;
-      const leaf2 = new THREE.Mesh(f.sphereLow, shared.treeLeafDark);
-      leaf2.scale.set(1.0, 1.1, 1.0);
-      leaf2.position.set(0.5, 1.8, 0.3);
+      const leaf = new THREE.Mesh(f.icoTree, shared.treeLeaf);
+      leaf.scale.set(1.35, 1.55, 1.35);
+      leaf.position.y = 2.25;
+      const leaf2 = new THREE.Mesh(f.icoTree, shared.treeLeafDark);
+      leaf2.scale.set(0.95, 1.0, 0.95);
+      leaf2.position.set(0.45, 1.85, 0.3);
       t.add(trunk, leaf, leaf2);
       g.add(t);
       this.trees.push(t);
@@ -241,14 +259,20 @@ class Chunk {
     }
     for (let i = 0; i < LAMPS; i++) {
       const l = new THREE.Group();
-      const pole = new THREE.Mesh(f.cylLow, shared.metal);
-      pole.scale.set(0.07, 3.6, 0.07);
-      pole.position.y = 1.8;
-      const arm = f.part(shared.metal, 0.8, 0.06, 0.06, 0, 3.55);
-      const glow = new THREE.Mesh(f.sphereLow, shared.lampGlow);
-      glow.scale.setScalar(0.22);
-      glow.position.set(0, 3.45, 0);
-      l.add(pole, arm, glow);
+      // Black post with a white globe on top.
+      const pole = new THREE.Mesh(f.cylLow, shared.railing);
+      pole.scale.set(0.07, 3.5, 0.07);
+      pole.position.y = 1.75;
+      const base = new THREE.Mesh(f.cylLow, shared.railing);
+      base.scale.set(0.14, 0.4, 0.14);
+      base.position.y = 0.2;
+      const neck = new THREE.Mesh(f.cylLow, shared.railing);
+      neck.scale.set(0.12, 0.12, 0.12);
+      neck.position.y = 3.5;
+      const globe = new THREE.Mesh(f.sphere, shared.globe);
+      globe.scale.setScalar(0.28);
+      globe.position.y = 3.8;
+      l.add(pole, base, neck, globe);
       g.add(l);
       this.lamps.push(l);
     }
@@ -258,6 +282,20 @@ class Chunk {
       g.add(bin);
       this.bins.push(bin);
     }
+    for (let i = 0; i < PLANTERS; i++) {
+      const p = new THREE.Group();
+      p.add(f.part(shared.pot, 0.55, 0.45, 0.55, 0, 0));
+      const bush = new THREE.Mesh(f.icoTree, shared.treeLeaf);
+      bush.scale.setScalar(0.42);
+      bush.position.y = 0.75;
+      p.add(bush);
+      g.add(p);
+      this.planters.push(p);
+    }
+    this.bench = new THREE.Group();
+    for (const z of [-0.65, 0.65]) this.bench.add(f.part(shared.railing, 0.42, 0.42, 0.08, 0, 0, z));
+    this.bench.add(f.part(shared.wood, 0.45, 0.07, 1.5, 0, 0.42), f.part(shared.wood, 0.07, 0.4, 1.5, 0.2, 0.5));
+    g.add(this.bench);
   }
 
   randomize(def: DistrictDef, mats: DistrictMats, detail: Detail) {
@@ -302,6 +340,10 @@ class Chunk {
         band.visible = shop;
         band.scale.set(0.12, 3.4, depth - 0.5);
         band.position.set(side * 6.15, 1.7, zc);
+        const glass = this.shopGlass[bi];
+        glass.visible = shop && depth > 3;
+        glass.scale.set(0.06, 2.0, Math.max(1, depth - 2.2));
+        glass.position.set(side * 6.08, 1.35, zc);
 
         const dome = this.domes[bi];
         if (Math.random() < def.domeChance) {
@@ -325,12 +367,16 @@ class Chunk {
           c.visible = true;
           c.position.set(side * (6.2 - 0.5), 5.0 + Math.floor(rand(0, 2)) * 2.5, zc);
           c.rotation.y = side > 0 ? Math.PI : 0;
-        } else if (detail >= 1 && bal < MAX_BALCONIES && height > 9 && depth > 5 && Math.random() < def.balconyChance) {
-          const g = this.balconies[bal++];
-          g.visible = true;
-          const floor = 2 + Math.floor(rand(1, Math.max(1, (height - 4) / 2.5)));
-          g.position.set(side * (6.2 - 0.6), 1.9 + floor * 2.5 - 1.2, zc);
-          g.rotation.y = side > 0 ? Math.PI : 0;
+        } else if (detail >= 1 && height > 8 && depth > 5 && Math.random() < def.balconyChance) {
+          // Balconies stacked on the upper floors, as on Istanbul apartment blocks.
+          const floors = Math.max(1, Math.floor((height - 4.5) / 2.5));
+          for (let fl = 1; fl <= floors && bal < MAX_BALCONIES; fl++) {
+            if (fl > 1 && Math.random() < 0.25) continue;
+            const g = this.balconies[bal++];
+            g.visible = true;
+            g.position.set(side * (6.2 - 0.6), 3.2 + fl * 2.5 - 1.2, zc);
+            g.rotation.y = side > 0 ? Math.PI : 0;
+          }
         }
         if (detail >= 2 && rp < MAX_ROOF_PROPS && Math.random() < 0.5) {
           const p = this.roofProps[rp++];
@@ -350,6 +396,9 @@ class Chunk {
             this.tmpColor.copy(Math.random() < 0.3 ? this.litColor : this.darkColor);
             this.tmpColor.multiplyScalar(0.75 + Math.random() * 0.4);
             this.windows.setColorAt(wi, this.tmpColor);
+            d.scale.set(0.1, 1.3, 0.95);
+            d.updateMatrix();
+            this.frames.setMatrixAt(wi, d.matrix);
             wi++;
           }
         }
@@ -359,6 +408,7 @@ class Chunk {
       }
     }
     for (; bi < this.buildings.length; bi++) {
+      this.shopGlass[bi].visible = false;
       this.buildings[bi].visible = false;
       this.parapets[bi].visible = false;
       this.shopBands[bi].visible = false;
@@ -372,6 +422,9 @@ class Chunk {
     this.windows.instanceMatrix.needsUpdate = true;
     if (this.windows.instanceColor) this.windows.instanceColor.needsUpdate = true;
     this.windows.visible = wi > 0;
+    this.frames.count = detail >= 1 ? wi : 0;
+    this.frames.instanceMatrix.needsUpdate = true;
+    this.frames.visible = detail >= 1 && wi > 0;
     this.bollards.visible = def.left === "buildings" || def.right === "buildings";
 
     const sideOf = (s: -1 | 1) => (s < 0 ? def.left : def.right);
@@ -398,6 +451,17 @@ class Chunk {
       b.visible = detail >= 2 && Math.random() < 0.7;
       b.position.set(side * rand(4.6, 5.2), 0.45, -rand(1, CHUNK_LEN - 1));
     });
+    this.planters.forEach((p, i) => {
+      const side = i === 0 ? -1 : 1;
+      p.visible = detail >= 1 && sideOf(side) === "buildings";
+      p.position.set(side * 5.75, 0, -rand(2, CHUNK_LEN - 2));
+    });
+    {
+      const side: -1 | 1 = Math.random() < 0.5 ? -1 : 1;
+      this.bench.visible = detail >= 2 && Math.random() < 0.6;
+      this.bench.position.set(side * 5.6, 0, -rand(3, CHUNK_LEN - 3));
+      this.bench.rotation.y = side > 0 ? Math.PI : 0;
+    }
     this.manhole.visible = def.street !== "bridge" && Math.random() < 0.6;
     this.manhole.position.set(pick([-2.2, 2.2]), 0.0, -rand(2, CHUNK_LEN - 2));
     this.rebake();
@@ -491,13 +555,18 @@ export class CityWorld {
       dome: f.mats.dome,
       window: new THREE.MeshLambertMaterial({ color: 0xffffff, emissive: 0xffffff, emissiveIntensity: 0.18 }),
       treeTrunk: new THREE.MeshLambertMaterial({ color: SCENE.treeTrunk }),
-      treeLeaf: new THREE.MeshLambertMaterial({ color: SCENE.treeLeaf }),
-      treeLeafDark: new THREE.MeshLambertMaterial({ color: 0x3f7030 }),
-      palmLeaf: new THREE.MeshLambertMaterial({ color: 0x4a8f3a }),
+      treeLeaf: new THREE.MeshLambertMaterial({ color: 0x4f9a3a, flatShading: true }),
+      treeLeafDark: new THREE.MeshLambertMaterial({ color: 0x3c7f2e, flatShading: true }),
+      palmLeaf: new THREE.MeshLambertMaterial({ color: 0x4a8f3a, flatShading: true }),
       cumba: new THREE.MeshLambertMaterial({ color: 0x7a4a2c, map: roofTex }),
       metal: f.mats.metal,
       lampGlow: f.mats.lampGlow,
       bridgeRail: new THREE.MeshLambertMaterial({ color: 0x5b6670 }),
+      globe: new THREE.MeshLambertMaterial({ color: 0xfffaf0, emissive: 0xfff1d2, emissiveIntensity: 0.55 }),
+      frame: new THREE.MeshLambertMaterial({ color: 0xf1e8d6 }),
+      shopGlass: new THREE.MeshLambertMaterial({ color: 0xffd58a, emissive: 0xffb44d, emissiveIntensity: 0.55 }),
+      pot: new THREE.MeshLambertMaterial({ color: 0xb4583a }),
+      wood: new THREE.MeshLambertMaterial({ color: 0x8b5a2b }),
     };
 
     this.ground = f.part(new THREE.MeshLambertMaterial({ color: SCENE.ground }), 400, 0.1, 400, 0, -0.25, 0);
@@ -634,7 +703,7 @@ export class CityWorld {
     this.halo.position.copy(this.sun.position);
     b.add(this.halo);
 
-    const cloudMat = new THREE.MeshLambertMaterial({ color: 0xfff6ec, fog: false, emissive: 0x6a5a55 });
+    const cloudMat = new THREE.MeshLambertMaterial({ color: 0xffffff, fog: false, emissive: 0x9a9a9a });
     const clouds = new THREE.Group();
     for (const [x, y, s] of [[-120, 120, 18], [-70, 140, 12], [20, 150, 15], [110, 125, 20], [160, 145, 11]] as const) {
       for (let i = 0; i < 3; i++) {
@@ -679,16 +748,38 @@ export class CityWorld {
         g.add(tip);
       }
     };
-    const tower = (g: THREE.Group, x: number, s: number) => {
-      const t = new THREE.Mesh(f.cyl, near);
-      t.scale.set(7 * s, 42 * s, 7 * s);
-      t.position.set(x, 21 * s, 10);
-      g.add(t);
-      g.add(f.part(near, 8.5 * s, 2 * s, 8.5 * s, x, 40 * s, 10, f.cyl));
-      const cap = new THREE.Mesh(f.cone, near);
-      cap.scale.set(8.5 * s, 14 * s, 8.5 * s);
-      cap.position.set(x, 49 * s, 10);
+    const stone = new THREE.MeshLambertMaterial({ color: 0xd8c6a4, fog: false });
+    const stoneDark = new THREE.MeshLambertMaterial({ color: 0xb59f7d, fog: false });
+    const slate = new THREE.MeshLambertMaterial({ color: 0x4d5a66, fog: false });
+    const hole = new THREE.MeshLambertMaterial({ color: 0x2c2723, fog: false });
+    /** Galata Tower: stone shaft, arched window ring, gallery and slate cone. */
+    const tower = (g: THREE.Group, x: number, s: number, z = 10) => {
+      const r = 7 * s;
+      const shaft = new THREE.Mesh(f.cyl, stone);
+      shaft.scale.set(r, 40 * s, r);
+      shaft.position.set(x, 20 * s, z);
+      g.add(shaft);
+      for (const y of [12, 24, 33]) g.add(f.part(stoneDark, r * 2.04, 0.8 * s, r * 2.04, x, y * s, z, f.cyl));
+      const ring = (y: number, hgt: number, n: number) => {
+        for (let i = 0; i < n; i++) {
+          const a = (i / n) * Math.PI * 2;
+          const w = new THREE.Mesh(f.box, hole);
+          w.scale.set(1.3 * s, hgt * s, 0.6 * s);
+          w.position.set(x + Math.sin(a) * r, y * s, z + Math.cos(a) * r);
+          w.rotation.y = a;
+          g.add(w);
+        }
+      };
+      ring(18, 3, 8);
+      ring(29, 3, 8);
+      ring(38, 3.4, 12);
+      g.add(f.part(stone, r * 2.3, 1 * s, r * 2.3, x, 40 * s, z, f.cyl));
+      g.add(f.part(hole, r * 2.32, 0.15 * s, r * 2.32, x, 41.6 * s, z, f.cyl));
+      const cap = new THREE.Mesh(f.cone, slate);
+      cap.scale.set(r * 1.08, 16 * s, r * 1.08);
+      cap.position.set(x, 49 * s, z);
       g.add(cap);
+      g.add(f.part(slate, 0.4 * s, 4 * s, 0.4 * s, x, 57 * s, z, f.cyl));
     };
     const waterStrip = (g: THREE.Group) => {
       const w = new THREE.Mesh(new THREE.PlaneGeometry(1400, 120).rotateX(-Math.PI / 2), new THREE.MeshLambertMaterial({ color: 0x5d8fb0, fog: false, emissive: 0x1a3a50 }));
@@ -698,8 +789,9 @@ export class CityWorld {
 
     const galata = new THREE.Group();
     hills(galata, [[-160, 70], [-60, 55], [40, 60], [150, 75]]);
-    mosque(galata, -45, 1);
-    tower(galata, 58, 1);
+    mosque(galata, -75, 0.8);
+    // The tower stands at the end of the street, as seen from Istiklal.
+    tower(galata, 6, 1.5, -70);
     const mosqueGroup = new THREE.Group();
     hills(mosqueGroup, [[-170, 60], [-30, 70], [120, 65]]);
     mosque(mosqueGroup, 10, 1.35);
