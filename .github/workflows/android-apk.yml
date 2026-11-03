@@ -49,6 +49,17 @@ jobs:
     runs-on: ubuntu-24.04
 
     steps:
+      - name: Free disk space
+        # The release build compiles native code and needs more room than the
+        # runner leaves free; remove toolchains this job never uses.
+        run: |
+          df -h /
+          sudo rm -rf /usr/share/dotnet /opt/ghc /usr/local/.ghcup /usr/share/swift \
+            /usr/local/share/boost /opt/hostedtoolcache/CodeQL /usr/local/share/powershell \
+            /usr/local/lib/node_modules/@azure 2>/dev/null || true
+          sudo docker image prune --all --force >/dev/null 2>&1 || true
+          df -h /
+
       - name: Checkout repository
         uses: actions/checkout@v4
 
@@ -162,8 +173,9 @@ jobs:
           ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
           ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
         run: |
+          set -o pipefail
           chmod +x gradlew
-          ./gradlew --no-daemon assembleRelease
+          ./gradlew --no-daemon assembleRelease 2>&1 | tee "$RUNNER_TEMP/gradle-apk.log"
 
       - name: Build signed release AAB
         working-directory: frontend/android
@@ -171,7 +183,31 @@ jobs:
           ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
           ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
           ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
-        run: ./gradlew --no-daemon bundleRelease
+        run: |
+          set -o pipefail
+          ./gradlew --no-daemon bundleRelease 2>&1 | tee "$RUNNER_TEMP/gradle-aab.log"
+
+      - name: Show the cause of a failed Gradle build
+        if: failure()
+        run: |
+          echo "::group::Disk and memory"; df -h /; free -m; echo "::endgroup::"
+          for f in "$RUNNER_TEMP"/gradle-*.log; do
+            [ -f "$f" ] || continue
+            echo "== $f"
+            grep -n -A12 "What went wrong" "$f" || true
+            grep -n -m 20 -E "Caused by|OutOfMemoryError|No space left|Keystore|Cannot recover key|Duplicate|ZipException|IOException" "$f" || true
+          done
+
+      - name: Upload Gradle logs
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: gradle-logs
+          path: |
+            ${{ runner.temp }}/gradle-*.log
+            frontend/android/build/reports/problems/problems-report.html
+          if-no-files-found: ignore
+          retention-days: 7
 
       - name: Upload APK
         uses: actions/upload-artifact@v4

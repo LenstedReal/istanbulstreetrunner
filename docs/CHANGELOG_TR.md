@@ -192,3 +192,9 @@ Bu ortamda **çalıştırılan** testler:
 - **Fontlar**: Fredoka'da eksik olan İ, Ş, ş, Ğ, ğ harfleri fontun kendi nokta, kısa ve çengel işaretleriyle eklendi (OFL izin verir); önceden bu harfler başka fontla basılıyordu. Türkçe büyük harf dönüşümü düzeltildi ("GİZLİLİK"), başlık "İSTANBUL".
 - **Mağaza görselleri**: Play kuralları ekran görüntülerinin oyunu doğru göstermesini ister. APK'yı test ettikten sonra mağazaya oyundan alınmış gerçek ekran görüntüleri koy.
 
+
+## 11. Derleme düzeltmesi (paketleme hatası)
+
+- `:app:packageRelease` adımı 26 dakikalık derlemenin sonunda çöktü. Derleme adımları 1.0.3 ile aynı olduğundan neden büyük olasılıkla bellek ya da disk sınırı.
+- Gradle belleği 2 GB → 6 GB (Kotlin 2 GB), yalnızca ARM mimarileri (`armeabi-v7a`, `arm64-v8a`; tüm gerçek telefonlar). x86 yalnızca emülatörler ve birkaç Intel Chromebook içindir. Derleme süresi ve disk kullanımı yaklaşık yarıya iner.
+- Derleme başında runner'da kullanılmayan araçlar silinerek disk açılır; hata olursa "Show the cause of a failed Gradle build" adımı nedeni, disk ve bellek durumunu yazar, `gradle-logs` olarak indirilebilir.

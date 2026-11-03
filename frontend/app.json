@@ -73,6 +73,7 @@
       ],
       "./plugins/withAndroidBuildConfig.js",
       "./plugins/withAndroidManifestCleanup.js",
+      "./plugins/withAndroidReleaseTuning.js",
       "expo-asset"
     ],
     "experiments": {
