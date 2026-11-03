@@ -8,7 +8,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { api, ApiError, type PlayerOut, type PublicPlayer } from "@/src/api";
 import { ChunkyButton } from "@/src/components/ChunkyButton";
-import { fmt, locale, useT } from "@/src/i18n";
+import { fmt, shortDate, useT } from "@/src/i18n";
 import { useProfile } from "@/src/profile";
 import { makeStyles, useTheme } from "@/src/theme";
 import { fonts, radius, spacing } from "@/src/tokens";
@@ -132,7 +132,7 @@ export default function LeaderboardScreen() {
           rank: i + 1,
           name: profile.nickname,
           score: s.score,
-          sub: t("board.localSub", { distance: fmt(s.distance), coins: fmt(s.coins), date: new Date(s.date).toLocaleDateString(locale()) }),
+          sub: t("board.localSub", { distance: fmt(s.distance), coins: fmt(s.coins), date: shortDate(s.date) }),
           isMe: i === 0,
         }))
       : tab === "friends"

@@ -163,3 +163,15 @@ Bu ortamda **çalıştırılan** testler:
 6. Play'e göndermeden önce GitHub değişkeni `EXPO_PUBLIC_ADS_TEST_MODE` = `0`, yeni derleme al.
 7. Play Console: veri güvenliği formunu politika metnine göre güncelle (hesap verileri, oyun içi etkileşimler, reklam kimliği, satın alma geçmişi), hedef kitle 13+.
 8. app-ads.txt: geliştirici web sitesi alan adının köküne (örn. `LenstedReal.github.io` deposu) şu satır: `google.com, pub-4558868217074430, DIRECT, f08c47fec0942fa0`.
+
+---
+
+## 9. Lint düzeltmeleri ve "Oyunu değerlendir" (ek commit)
+
+- CI'daki `expo lint` (React Compiler kuralları) 11 hata vermişti; bu ortamda ESLint çalıştırılamadığı için ilk gönderimde yakalanmadı. Düzeltilenler:
+  - render sırasında ref'e yazma (`profile.tsx`, `app/index.tsx`) → commit sonrası güncellenir;
+  - kaydırma hareketi ref'i bir fonksiyona veriyordu → dokunma olaylarıyla (`onTouchStart/Move/End`) yeniden yazıldı, eşikler aynı;
+  - effect içinde doğrudan `setState` (`settings.tsx` takma ad ve reklam seçeneği, `missions.tsx` yükleniyor durumu, GL görünümü yenileme) kaldırıldı;
+  - render sırasında `Date.now()` / `new Date()` (`IntroOverlay`, `LegalScreen`, liderlik tarihi) kaldırıldı;
+  - Reanimated değerleri `.get()` / `.set()` ile kullanılıyor.
+- **Oyunu değerlendir**: 5. oyundan sonra sonuç ekranında kısa bir soru (Değerlendir / Sonra / Bir daha sorma), en fazla 3 kez; Ayarlar → Oyun → "Oyunu değerlendir" her zaman açık. Değerlendirme karşılığında ödül verilmez (Play politikası). Play Store uygulaması yoksa web sayfası açılır.

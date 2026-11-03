@@ -301,4 +301,11 @@ export const en: Strings = {
   "power.wingsHint": "Seagull Wings: take off and grab the coins in the sky",
   "power.carpetHint": "Flying Carpet: glide over low obstacles, takes one hit for you",
   "token.got": "Ferry token piece!",
+  "rate.title": "Enjoying the game?",
+  "rate.body": "We would love a rating and a review on Google Play.",
+  "rate.yes": "Rate",
+  "rate.later": "Later",
+  "rate.never": "Don't ask again",
+  "settings.rate": "Rate the game",
+  "settings.rateHelp": "Give a rating and review on Google Play",
 };

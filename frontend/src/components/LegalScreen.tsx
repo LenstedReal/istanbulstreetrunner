@@ -4,7 +4,7 @@ import React from "react";
 import { Linking, Pressable, ScrollView, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import { useLang, useT } from "@/src/i18n";
+import { longDate, useLang, useT } from "@/src/i18n";
 import { LEGAL_BASE_URL, LEGAL_PAGES, LEGAL_UPDATED, legalText, type LegalDoc } from "@/src/legal";
 import { makeStyles, useTheme } from "@/src/theme";
 import { fonts, radius, spacing } from "@/src/tokens";
@@ -37,7 +37,7 @@ export function LegalScreen({ doc }: { doc: LegalDoc }) {
   const lang = useLang();
   const t = useT();
   const text = legalText(doc, lang);
-  const date = new Date(`${LEGAL_UPDATED}T12:00:00Z`).toLocaleDateString(lang === "tr" ? "tr-TR" : "en-GB", { day: "numeric", month: "long", year: "numeric" });
+  const date = longDate(LEGAL_UPDATED);
   const close = () => (router.canGoBack() ? router.back() : router.replace("/settings"));
 
   return (

@@ -22,11 +22,13 @@ interface Props {
   /** Token pieces now held in this district (shown when one was collected). */
   tokens: number | null;
   unlocked: DistrictId | null;
+  rateAsk?: boolean;
+  onRate?: (answer: "rate" | "later" | "never") => void;
   onRetry: () => void;
   onHome: () => void;
 }
 
-export function GameOverSheet({ result, isRecord, bestScore, status, serverRecord, tokens, unlocked, onRetry, onHome }: Props) {
+export function GameOverSheet({ result, isRecord, bestScore, status, serverRecord, tokens, unlocked, rateAsk, onRate, onRetry, onHome }: Props) {
   const styles = useStyles();
   const { colors } = useTheme();
   const t = useT();
@@ -68,6 +70,19 @@ export function GameOverSheet({ result, isRecord, bestScore, status, serverRecor
           <Ionicons name="boat" size={18} color={colors.info} />
           <Text style={styles.tokenText}>
             {unlocked ? t("pier.unlocked", { name: t(DISTRICTS[unlocked].name) }) : t("over.token", { have: Math.min(tokens, TOKENS_PER_DISTRICT) })}
+          </Text>
+        </View>
+      ) : null}
+      {rateAsk && onRate ? (
+        <View style={styles.rate} testID="game-over-rate">
+          <Text style={styles.rateTitle}>{t("rate.title")}</Text>
+          <Text style={styles.note}>{t("rate.body")}</Text>
+          <View style={styles.rateRow}>
+            <ChunkyButton testID="rate-yes" label={t("rate.yes")} icon="star" variant="gold" onPress={() => onRate("rate")} style={styles.flex} />
+            <ChunkyButton testID="rate-later" label={t("rate.later")} variant="neutral" onPress={() => onRate("later")} style={styles.flex} />
+          </View>
+          <Text style={styles.rateNever} onPress={() => onRate("never")} testID="rate-never">
+            {t("rate.never")}
           </Text>
         </View>
       ) : null}
@@ -114,6 +129,10 @@ const useStyles = makeStyles((colors) => ({
   statLabel: { fontFamily: fonts.text, fontSize: 12, color: colors.muted },
   token: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: spacing.sm, backgroundColor: colors.surfaceTertiary, borderRadius: radius.md, padding: spacing.sm },
   tokenText: { fontFamily: fonts.textHeavy, fontSize: 14, color: colors.onSurfaceTertiary, flexShrink: 1 },
+  rate: { gap: spacing.sm, backgroundColor: colors.surfaceTertiary, borderRadius: radius.md, padding: spacing.md },
+  rateTitle: { fontFamily: fonts.textHeavy, fontSize: 15, color: colors.onSurfaceTertiary, textAlign: "center" },
+  rateRow: { flexDirection: "row", gap: spacing.sm },
+  rateNever: { fontFamily: fonts.textBold, fontSize: 12, color: colors.muted, textAlign: "center", textDecorationLine: "underline" },
   note: { fontFamily: fonts.text, fontSize: 12, color: colors.muted, textAlign: "center" },
   flex: { flex: 1 },
 }));

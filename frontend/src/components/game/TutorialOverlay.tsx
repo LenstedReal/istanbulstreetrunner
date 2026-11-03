@@ -14,11 +14,11 @@ function Hint({ icon, text, dx, dy, testID }: { icon: IconName; text: string; dx
   const { colors } = useTheme();
   const t = useSharedValue(0);
   useEffect(() => {
-    t.value = withRepeat(withSequence(withTiming(1, { duration: 650, easing: Easing.out(Easing.quad) }), withTiming(0, { duration: 0 })), -1);
+    t.set(withRepeat(withSequence(withTiming(1, { duration: 650, easing: Easing.out(Easing.quad) }), withTiming(0, { duration: 0 })), -1));
   }, [t]);
   const anim = useAnimatedStyle(() => ({
-    transform: [{ translateX: t.value * dx }, { translateY: t.value * dy }],
-    opacity: 1 - t.value * 0.7,
+    transform: [{ translateX: t.get() * dx }, { translateY: t.get() * dy }],
+    opacity: 1 - t.get() * 0.7,
   }));
   return (
     <View style={styles.hint} testID={testID}>

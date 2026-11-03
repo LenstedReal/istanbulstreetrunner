@@ -30,7 +30,7 @@ interface Props {
 export function IntroOverlay({ ready, onDone }: Props) {
   const styles = useStyles();
   const t = useT();
-  const start = useRef(Date.now());
+  const start = useRef(0);
   const [tip, setTip] = useState(0);
   const logo = useSharedValue(0);
   const pulse = useSharedValue(1);
@@ -38,31 +38,35 @@ export function IntroOverlay({ ready, onDone }: Props) {
   const doneRef = useRef(false);
 
   useEffect(() => {
-    logo.value = withSpring(1, { damping: 12, stiffness: 120 });
-    pulse.value = withDelay(600, withRepeat(withSequence(withTiming(1.04, { duration: 700, easing: Easing.inOut(Easing.quad) }), withTiming(1, { duration: 700, easing: Easing.inOut(Easing.quad) })), -1));
+    start.current = Date.now();
+  }, []);
+
+  useEffect(() => {
+    logo.set(withSpring(1, { damping: 12, stiffness: 120 }));
+    pulse.set(withDelay(600, withRepeat(withSequence(withTiming(1.04, { duration: 700, easing: Easing.inOut(Easing.quad) }), withTiming(1, { duration: 700, easing: Easing.inOut(Easing.quad) })), -1)));
     // Slow fill while loading; it is pushed to 100 % once the scene is ready.
-    progress.value = withTiming(0.8, { duration: MAX_MS, easing: Easing.out(Easing.cubic) });
-    const tipTimer = setInterval(() => setTip((t) => (t + 1) % TIPS.length), 1800);
+    progress.set(withTiming(0.8, { duration: MAX_MS, easing: Easing.out(Easing.cubic) }));
+    const tipTimer = setInterval(() => setTip((i) => (i + 1) % TIPS.length), 1800);
     return () => clearInterval(tipTimer);
   }, [logo, pulse, progress]);
 
   useEffect(() => {
     if (doneRef.current) return;
-    const elapsed = Date.now() - start.current;
+    const elapsed = start.current ? Date.now() - start.current : 0;
     const wait = ready ? Math.max(MIN_MS - elapsed, 0) : Math.max(MAX_MS - elapsed, 0);
-    const t = setTimeout(() => {
+    const timer = setTimeout(() => {
       doneRef.current = true;
-      progress.value = withTiming(1, { duration: 350 });
+      progress.set(withTiming(1, { duration: 350 }));
       setTimeout(onDone, 450);
     }, wait);
-    return () => clearTimeout(t);
+    return () => clearTimeout(timer);
   }, [ready, onDone, progress]);
 
   const logoStyle = useAnimatedStyle(() => ({
-    opacity: logo.value,
-    transform: [{ translateY: (1 - logo.value) * -60 }, { scale: logo.value * pulse.value }],
+    opacity: logo.get(),
+    transform: [{ translateY: (1 - logo.get()) * -60 }, { scale: logo.get() * pulse.get() }],
   }));
-  const barStyle = useAnimatedStyle(() => ({ width: `${Math.round(progress.value * 100)}%` }));
+  const barStyle = useAnimatedStyle(() => ({ width: `${Math.round(progress.get() * 100)}%` }));
 
   return (
     <Animated.View exiting={FadeOut.duration(400)} style={styles.root} testID="intro-overlay">

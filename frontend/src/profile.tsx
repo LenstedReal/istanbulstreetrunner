@@ -19,6 +19,7 @@ import { isDistrict, type DistrictId } from "@/src/game/districts";
 import { DEFAULT_GRAPHICS, parseGraphics, type GraphicsPrefs } from "@/src/game/quality/profiles";
 import { getLang, setLang, type Lang } from "@/src/i18n";
 import { addToken, DEFAULT_PROGRESS, parseProgress, tokenDistance, type Progress } from "@/src/progress";
+import { afterRun, DEFAULT_RATE, finish, openStorePage, parseRate, postpone, rateDue, type RateState } from "@/src/rating";
 import { configureRevenueCat, isPremium, linkAccount, premiumExpiry } from "@/src/subscription";
 import { storage } from "@/src/utils/storage";
 import { buy, DEFAULT_WARDROBE, equip, lookOf, parseWardrobe, type Wardrobe } from "@/src/wardrobe";
@@ -90,6 +91,7 @@ interface ProfileState {
   wardrobe: Wardrobe;
   lastRun: { status: RunStatus; newRecord: boolean };
   waking: boolean;
+  rate: RateState;
 }
 
 interface ProfileApi extends ProfileState {
@@ -128,6 +130,9 @@ interface ProfileApi extends ProfileState {
   redeemTransferCode: (code: string) => Promise<void>;
   resolveConflictNewProfile: () => Promise<void>;
   retryConnect: () => Promise<void>;
+  /** The "rate the game" question should be shown on this result screen. */
+  rateAsk: boolean;
+  answerRate: (answer: "rate" | "later" | "never") => Promise<void>;
   look: ReturnType<typeof lookOf>;
 }
 
@@ -162,6 +167,7 @@ const KEYS = {
   wardrobe: "wardrobe",
   saveRev: "save_rev",
   pendingRuns: "pending_runs",
+  rate: "rate_prompt",
 };
 /** SecureStore key for the bearer token (only [A-Za-z0-9._-] is allowed). */
 const TOKEN_KEY = "auth_token";
@@ -216,14 +222,15 @@ const INITIAL: ProfileState = {
   wardrobe: DEFAULT_WARDROBE,
   lastRun: { status: "idle", newRecord: false },
   waking: false,
+  rate: DEFAULT_RATE,
 };
 
 const isNetworkError = (e: unknown) => e instanceof ApiError && (e.status === 0 || e.status === 408 || e.status >= 500);
 
 export function ProfileProvider({ children }: { children: React.ReactNode }) {
   const [state, setState] = useState<ProfileState>(INITIAL);
+  // Every state change goes through patch(), which updates this ref first, so it is never written during render.
   const stateRef = useRef(state);
-  stateRef.current = state;
   const connecting = useRef<Promise<string | null> | null>(null);
   const session = useRef<RunSession | null>(null);
   const prefetching = useRef(false);
@@ -244,14 +251,14 @@ export function ProfileProvider({ children }: { children: React.ReactNode }) {
       const [
         playerId, friendCode, publicId, nickname, bestScore, totalCoins, scoresRaw, haptics, tutorialSeen, sound, music, shadows,
         musicTrack, keys, playsSinceAd, songChanges, adFree, adFreeUntil, graphicsRaw, lang, onlineVisible, coinsSpent, coinsBonus,
-        progressRaw, wardrobeRaw, hintsRaw, rev,
+        progressRaw, wardrobeRaw, hintsRaw, rev, rateRaw,
       ] = await Promise.all([
         g(KEYS.playerId, null), g(KEYS.friendCode, null), g(KEYS.publicId, null), g(KEYS.nickname, ""), g(KEYS.bestScore, 0),
         g(KEYS.totalCoins, 0), g(KEYS.localScores, "[]"), g(KEYS.haptics, true), g(KEYS.tutorialSeen, false), g(KEYS.sound, true),
         g(KEYS.music, true), g(KEYS.shadows, true), g(KEYS.musicTrack, DEFAULT_TRACK), g(KEYS.keys, 0), g(KEYS.playsSinceAd, 0),
         g(KEYS.songChanges, 0), g(KEYS.adFree, false), g(KEYS.adFreeUntil, null), g(KEYS.graphics, null), g(KEYS.lang, null),
         g(KEYS.onlineVisible, true), g(KEYS.coinsSpent, 0), g(KEYS.coinsBonus, 0), g(KEYS.progress, null), g(KEYS.wardrobe, null),
-        g(KEYS.hintsSeen, "[]"), g(KEYS.saveRev, 0),
+        g(KEYS.hintsSeen, "[]"), g(KEYS.saveRev, 0), g(KEYS.rate, null),
       ]);
       let localScores: LocalScore[] = [];
       let hintsSeen: string[] = [];
@@ -301,6 +308,7 @@ export function ProfileProvider({ children }: { children: React.ReactNode }) {
         coinsBonus: Number(coinsBonus) || 0,
         progress: parseProgress(progressRaw as string | null),
         wardrobe: parseWardrobe(wardrobeRaw as string | null),
+        rate: parseRate(rateRaw as string | null),
       });
     })();
   }, [patch]);
@@ -579,7 +587,9 @@ export function ProfileProvider({ children }: { children: React.ReactNode }) {
   }, [connect]);
 
   useEffect(() => {
-    if (state.loaded && state.account === "loading") void ensureOnline();
+    if (!state.loaded || state.account !== "loading") return;
+    const timer = setTimeout(() => void ensureOnline(), 0);
+    return () => clearTimeout(timer);
   }, [state.loaded, state.account, ensureOnline]);
 
   // Retry when the app comes back to the foreground after being offline.
@@ -720,12 +730,14 @@ export function ProfileProvider({ children }: { children: React.ReactNode }) {
         progress = out.progress;
         unlocked = out.unlocked;
       }
-      patch({ bestScore, totalCoins, localScores, progress, lastRun: { status: "pending", newRecord: false } });
+      const rate = afterRun(s.rate);
+      patch({ bestScore, totalCoins, localScores, progress, rate, lastRun: { status: "pending", newRecord: false } });
       await Promise.all([
         storage.setItem(KEYS.bestScore, bestScore),
         storage.setItem(KEYS.totalCoins, totalCoins),
         storage.setItem(KEYS.localScores, JSON.stringify(localScores)),
         storage.setItem(KEYS.progress, JSON.stringify(progress)),
+        storage.setItem(KEYS.rate, JSON.stringify(rate)),
       ]);
       if (r.token) scheduleSave();
       const tokens = progress.tokens[r.district] ?? 0;
@@ -997,12 +1009,25 @@ export function ProfileProvider({ children }: { children: React.ReactNode }) {
     return tokenDistance(p, p.current);
   }, []);
 
+  const answerRate = useCallback(
+    async (answer: "rate" | "later" | "never") => {
+      const cur = stateRef.current.rate;
+      const rate = answer === "later" ? postpone(cur) : finish(cur);
+      patch({ rate });
+      await storage.setItem(KEYS.rate, JSON.stringify(rate));
+      if (answer === "rate") await openStorePage();
+    },
+    [patch],
+  );
+
   const look = useMemo(() => lookOf(state.wardrobe), [state.wardrobe]);
 
   const value = useMemo<ProfileApi>(
     () => ({
       ...state,
       coins: coinBalance(state.totalCoins, state.coinsBonus, state.coinsSpent),
+      rateAsk: rateDue(state.rate),
+      answerRate,
       look,
       recordRun,
       setNickname,
@@ -1042,7 +1067,7 @@ export function ProfileProvider({ children }: { children: React.ReactNode }) {
       state, look, recordRun, setNickname, setHaptics, setSound, setMusic, setShadows, setMusicTrack, markTutorialSeen, resetTutorial,
       resetLocalData, ensureOnline, recoverOnline, addKeys, spendKeys, registerPlay, registerSongChange, setAdFree, takeRunSession,
       setGraphics, setLanguage, setOnlineVisible, markHintSeen, refreshMissions, claimMission, buyItem, equipItem, selectDistrict,
-      tokenAtForRun, deleteAccount, createTransferCode, redeemTransferCode, resolveConflictNewProfile, retryConnect,
+      tokenAtForRun, deleteAccount, createTransferCode, redeemTransferCode, resolveConflictNewProfile, retryConnect, answerRate,
     ],
   );
 

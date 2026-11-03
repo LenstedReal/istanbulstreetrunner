@@ -2,8 +2,7 @@ import { ExpoWebGLRenderingContext, GLView } from "expo-gl";
 import * as Haptics from "expo-haptics";
 import { useFocusEffect, useRouter } from "expo-router";
 import React, { useCallback, useEffect, useRef, useState } from "react";
-import { Platform, StyleSheet, Text, TextInput, View } from "react-native";
-import { Gesture, GestureDetector } from "react-native-gesture-handler";
+import { Platform, StyleSheet, Text, TextInput, View, type GestureResponderEvent } from "react-native";
 
 import { ads } from "@/src/ads/ads";
 import { audio } from "@/src/audio";
@@ -77,16 +76,20 @@ export default function GameScreen() {
 
   const engineRef = useRef<RunnerEngine | null>(null);
   const modeRef = useRef<Mode>("menu");
-  modeRef.current = mode;
   const profileRef = useRef(profile);
-  profileRef.current = profile;
   const revivesRef = useRef(0);
   const resumeAfterRouteRef = useRef(false);
   const pendingInterstitialRef = useRef(false);
   const sessionRef = useRef<RunSession | null>(null);
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const showTutorialRef = useRef(false);
-  showTutorialRef.current = showTutorial;
+  const touch = useRef<{ x: number; y: number; fired: boolean } | null>(null);
+  // Refs mirror the latest render for engine callbacks and gestures (updated after commit, never during render).
+  useEffect(() => {
+    modeRef.current = mode;
+    profileRef.current = profile;
+    showTutorialRef.current = showTutorial;
+  });
   /** Quality and shadows the current GL view was built with. */
   const builtWith = useRef<string | null>(null);
 
@@ -162,12 +165,16 @@ export default function GameScreen() {
     engineRef.current?.dispose();
     engineRef.current = null;
     resetSessionShadowMode(profile.graphics.shadows);
-    setGlReady(false);
-    setGlKey((k) => k + 1);
+    // State changes run in a callback, not in the effect body (avoids cascading renders).
+    const timer = setTimeout(() => {
+      setGlReady(false);
+      setGlKey((k) => k + 1);
+    }, 0);
+    return () => clearTimeout(timer);
   }, [profile.graphics, glReady, mode, graphicsKey]);
 
-  // Callbacks object is mutable so the engine always sees the latest closures.
-  const callbacks = useRef<EngineCallbacks>({
+  // Engine callbacks only use refs and stable setters, so one object built when the engine is created stays valid.
+  const makeCallbacks = useCallback((): EngineCallbacks => ({
     onHud: (s) => setHud(s),
     onCrash: (r) => {
       setResult(r);
@@ -218,7 +225,7 @@ export default function GameScreen() {
       const q = effectiveQuality(g);
       if (!g.unsafe.includes(q)) void profileRef.current.setGraphics({ unsafe: [...g.unsafe, q] });
     },
-  });
+  }), [maybeShowInterstitial, showToast]);
 
   const onContextCreate = useCallback((gl: ExpoWebGLRenderingContext) => {
     // Expo GL may recreate its native context when a modal is shown or dismissed.
@@ -228,7 +235,7 @@ export default function GameScreen() {
     } else {
       const prefs = profileRef.current.graphics;
       const profileForDevice = resolveProfile(prefs, probeCaps(gl as unknown as WebGL2RenderingContext));
-      engineRef.current = new RunnerEngine(gl, callbacks.current, getSessionShadowMode(prefs.shadows), {
+      engineRef.current = new RunnerEngine(gl, makeCallbacks(), getSessionShadowMode(prefs.shadows), {
         profile: profileForDevice,
         fps: prefs.fps,
         look: profileRef.current.look,
@@ -239,7 +246,7 @@ export default function GameScreen() {
     }
     if (!profileRef.current.shadows) engineRef.current.setShadows(false);
     setGlReady(true);
-  }, [graphicsKey]);
+  }, [graphicsKey, makeCallbacks]);
 
   useEffect(() => () => engineRef.current?.dispose(), []);
 
@@ -394,29 +401,41 @@ export default function GameScreen() {
     [dismissTutorial],
   );
 
-  const fired = useRef(false);
-  const pan = Gesture.Pan()
-    .runOnJS(true)
-    .minDistance(8)
-    .onBegin(() => {
-      fired.current = false;
-    })
-    .onUpdate((e) => {
-      if (fired.current) return;
-      const { translationX: dx, translationY: dy } = e;
+  // Swipes: plain touch handlers on the canvas (a lane change fires as soon as the finger passes SWIPE_PX).
+  const swipe = useCallback(
+    (dx: number, dy: number) => {
+      if (Math.abs(dx) > Math.abs(dy)) sendInput(dx > 0 ? "right" : "left");
+      else sendInput(dy < 0 ? "jump" : "roll");
+    },
+    [sendInput],
+  );
+  const onTouchStart = useCallback((e: GestureResponderEvent) => {
+    touch.current = { x: e.nativeEvent.pageX, y: e.nativeEvent.pageY, fired: false };
+  }, []);
+  const onTouchMove = useCallback(
+    (e: GestureResponderEvent) => {
+      const t0 = touch.current;
+      if (!t0 || t0.fired) return;
+      const dx = e.nativeEvent.pageX - t0.x;
+      const dy = e.nativeEvent.pageY - t0.y;
       if (Math.abs(dx) < SWIPE_PX && Math.abs(dy) < SWIPE_PX) return;
-      fired.current = true;
-      if (Math.abs(dx) > Math.abs(dy)) sendInput(dx > 0 ? "right" : "left");
-      else sendInput(dy < 0 ? "jump" : "roll");
-    })
-    .onEnd((e) => {
-      if (fired.current) return;
-      const { translationX: dx, translationY: dy } = e;
+      t0.fired = true;
+      swipe(dx, dy);
+    },
+    [swipe],
+  );
+  const onTouchEnd = useCallback(
+    (e: GestureResponderEvent) => {
+      const t0 = touch.current;
+      touch.current = null;
+      if (!t0 || t0.fired) return;
+      const dx = e.nativeEvent.pageX - t0.x;
+      const dy = e.nativeEvent.pageY - t0.y;
       if (Math.abs(dx) < 10 && Math.abs(dy) < 10) return;
-      fired.current = true;
-      if (Math.abs(dx) > Math.abs(dy)) sendInput(dx > 0 ? "right" : "left");
-      else sendInput(dy < 0 ? "jump" : "roll");
-    });
+      swipe(dx, dy);
+    },
+    [swipe],
+  );
 
   // Keyboard support for the web preview.
   useEffect(() => {
@@ -448,11 +467,9 @@ export default function GameScreen() {
 
   return (
     <View style={styles.root} testID="game-screen">
-      <GestureDetector gesture={pan}>
-        <View style={StyleSheet.absoluteFill} testID="game-canvas">
-          <GLView key={glKey} style={StyleSheet.absoluteFill} onContextCreate={onContextCreate} />
-        </View>
-      </GestureDetector>
+      <View style={StyleSheet.absoluteFill} testID="game-canvas" onTouchStart={onTouchStart} onTouchMove={onTouchMove} onTouchEnd={onTouchEnd}>
+        <GLView key={glKey} style={StyleSheet.absoluteFill} onContextCreate={onContextCreate} />
+      </View>
 
       {mode === "menu" && introDone ? (
         <MainMenu
@@ -516,6 +533,8 @@ export default function GameScreen() {
           serverRecord={profile.lastRun.newRecord}
           tokens={tokenInfo?.tokens ?? null}
           unlocked={tokenInfo?.unlocked ?? null}
+          rateAsk={profile.rateAsk}
+          onRate={(answer) => void profile.answerRate(answer)}
           onRetry={startRun}
           onHome={goHome}
         />

@@ -23,14 +23,11 @@ export default function MissionsScreen() {
   const t = useT();
   const [busy, setBusy] = useState<string | null>(null);
   const [msg, setMsg] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
+  const { account, refreshMissions } = profile;
 
   useEffect(() => {
-    if (profile.account !== "online") return;
-    setLoading(true);
-    void profile.refreshMissions().finally(() => setLoading(false));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [profile.account]);
+    if (account === "online") void refreshMissions();
+  }, [account, refreshMissions]);
 
   const claim = async (id: string) => {
     setBusy(id);
@@ -56,7 +53,7 @@ export default function MissionsScreen() {
             <Ionicons name="cloud-offline-outline" size={40} color={colors.muted} />
             <Text style={styles.help}>{t("missions.offline")}</Text>
           </View>
-        ) : loading && list.length === 0 ? (
+        ) : profile.missions === null ? (
           <View style={styles.center}>
             <ActivityIndicator color={colors.brandPrimary} />
             <Text style={styles.help}>{profile.waking ? t("board.waking") : t("common.loading")}</Text>

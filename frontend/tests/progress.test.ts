@@ -83,3 +83,20 @@ test("pending run queue keeps the last five and drops expired runs", () => {
   assert.equal(parsePending(raw, now).some((p) => p.runId === "old"), false);
   assert.deepEqual(parsePending("garbage", now), []);
 });
+
+test("rating question: after 5 runs, later = 10 more runs, at most 3 times", async () => {
+  const { afterRun, DEFAULT_RATE, finish, parseRate, postpone, rateDue } = await import("@/src/rating-logic");
+  let s = { ...DEFAULT_RATE };
+  for (let i = 0; i < 4; i++) s = afterRun(s);
+  assert.equal(rateDue(s), false);
+  s = afterRun(s);
+  assert.equal(rateDue(s), true);
+  s = postpone(s);
+  assert.equal(rateDue(s), false);
+  for (let i = 0; i < 10; i++) s = afterRun(s);
+  assert.equal(rateDue(s), true);
+  s = postpone(postpone(s));
+  assert.equal(s.done, true);
+  assert.equal(rateDue(finish({ ...DEFAULT_RATE, runs: 50 })), false);
+  assert.deepEqual(parseRate("bad"), DEFAULT_RATE);
+});

@@ -313,6 +313,13 @@ export const tr = {
   "power.wingsHint": "Martı Kanadı: havalan ve gökyüzündeki altınları topla",
   "power.carpetHint": "Uçan Halı: alçak engellerin üstünden süzül, bir çarpmayı karşılar",
   "token.got": "Vapur jetonu parçası!",
+  "rate.title": "Oyunu beğendin mi?",
+  "rate.body": "Google Play'de puan verip yorum yazarsan çok seviniriz.",
+  "rate.yes": "Değerlendir",
+  "rate.later": "Sonra",
+  "rate.never": "Bir daha sorma",
+  "settings.rate": "Oyunu değerlendir",
+  "settings.rateHelp": "Google Play'de puan ver ve yorum yaz",
 };
 
 export type Strings = typeof tr;

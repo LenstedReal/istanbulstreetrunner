@@ -42,8 +42,8 @@ export function ChunkyButton({ label, icon, onPress, variant = "primary", size =
   const iconSize = size === "xl" ? 30 : size === "lg" ? 24 : 20;
 
   const anim = useAnimatedStyle(() => ({
-    transform: [{ translateY: pressed.value * edge * 0.8 }, { scale: 1 - pressed.value * 0.02 }],
-    borderBottomWidth: edge * (1 - pressed.value * 0.8),
+    transform: [{ translateY: pressed.get() * edge * 0.8 }, { scale: 1 - pressed.get() * 0.02 }],
+    borderBottomWidth: edge * (1 - pressed.get() * 0.8),
   }));
 
   return (
@@ -51,8 +51,8 @@ export function ChunkyButton({ label, icon, onPress, variant = "primary", size =
       testID={testID}
       accessibilityRole="button"
       disabled={disabled}
-      onPressIn={() => (pressed.value = withTiming(1, { duration: 70 }))}
-      onPressOut={() => (pressed.value = withSpring(0, { damping: 14, stiffness: 260 }))}
+      onPressIn={() => pressed.set(withTiming(1, { duration: 70 }))}
+      onPressOut={() => pressed.set(withSpring(0, { damping: 14, stiffness: 260 }))}
       onPress={onPress}
       style={[
         styles.base,

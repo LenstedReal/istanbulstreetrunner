@@ -68,3 +68,22 @@ export function fmt(n: number): string {
     return String(Math.round(n));
   }
 }
+
+const MONTHS: Record<Lang, string[]> = {
+  tr: ["Ocak", "Şubat", "Mart", "Nisan", "Mayıs", "Haziran", "Temmuz", "Ağustos", "Eylül", "Ekim", "Kasım", "Aralık"],
+  en: ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"],
+};
+
+/** "2026-11-04" or an ISO timestamp -> "4 Kasım 2026" / "4 November 2026" (pure string work). */
+export function longDate(iso: string): string {
+  const [y, m, d] = iso.slice(0, 10).split("-").map(Number);
+  if (!y || !m || !d) return iso;
+  return `${d} ${MONTHS[current][m - 1] ?? m} ${y}`;
+}
+
+/** "2026-11-04..." -> "04.11.2026" (TR) or "04/11/2026" (EN). */
+export function shortDate(iso: string): string {
+  const [y, m, d] = iso.slice(0, 10).split("-");
+  if (!y || !m || !d) return iso;
+  return current === "tr" ? `${d}.${m}.${y}` : `${d}/${m}/${y}`;
+}

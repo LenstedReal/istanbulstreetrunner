@@ -13,6 +13,7 @@ import { ChunkyButton } from "@/src/components/ChunkyButton";
 import { effectiveQuality, QUALITY_ORDER, type QualityPref } from "@/src/game/quality/profiles";
 import { useT } from "@/src/i18n";
 import { APP_VERSION, useProfile } from "@/src/profile";
+import { openStorePage } from "@/src/rating";
 import Purchases, { configureRevenueCat, isPremium, loadMonthlyPackage, premiumExpiry } from "@/src/subscription";
 import { makeStyles, useTheme } from "@/src/theme";
 import { fonts, radius, spacing } from "@/src/tokens";
@@ -27,10 +28,10 @@ export default function SettingsScreen() {
   const router = useRouter();
   const profile = useProfile();
   const t = useT();
-  const [nick, setNick] = useState(profile.nickname);
-  useEffect(() => {
-    setNick(profile.nickname);
-  }, [profile.nickname]);
+  // null = not edited, show the saved nickname (no state syncing in an effect).
+  const [draft, setDraft] = useState<string | null>(null);
+  const nick = draft ?? profile.nickname;
+  const setNick = (v: string) => setDraft(v);
   // Track preview: play the chosen song while this screen is open, stop when leaving.
   useEffect(() => {
     if (profile.music) audio.startMusic();
@@ -53,12 +54,11 @@ export default function SettingsScreen() {
   const [subscriptionBusy, setSubscriptionBusy] = useState(false);
   const [subscriptionMsg, setSubscriptionMsg] = useState<string | null>(null);
   const [price, setPrice] = useState<string | null>(null);
-  const [privacyOptions, setPrivacyOptions] = useState(ads.privacyOptionsRequired());
+  const [privacyOptions, setPrivacyOptions] = useState(() => ads.privacyOptionsRequired());
 
   useEffect(() => {
     let alive = true;
     loadMonthlyPackage().then((pkg) => alive && setPrice(pkg?.product.priceString ?? null));
-    setPrivacyOptions(ads.privacyOptionsRequired());
     return () => {
       alive = false;
     };
@@ -100,6 +100,7 @@ export default function SettingsScreen() {
     setSaving(true);
     try {
       await profile.setNickname(v);
+      setDraft(null);
       setMsg(t("settings.saved"));
     } catch (e) {
       // Moderation errors come back as a readable server message.
@@ -415,6 +416,8 @@ export default function SettingsScreen() {
           <NavRow testID="settings-haptics-test-button" icon="phone-portrait-outline" title={t("settings.hapticsTest")} help={t("settings.hapticsTestHelp")} onPress={() => Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => undefined)} />
           <View style={styles.divider} />
           <NavRow testID="settings-reset-tutorial-button" icon="refresh" title={t("settings.resetTutorial")} help={t("settings.resetTutorialHelp")} onPress={() => profile.resetTutorial()} />
+          <View style={styles.divider} />
+          <NavRow testID="settings-rate" icon="star-outline" title={t("settings.rate")} help={t("settings.rateHelp")} onPress={() => void openStorePage()} chevron />
           <View style={styles.divider} />
           <NavRow
             testID="settings-reset-data-button"
