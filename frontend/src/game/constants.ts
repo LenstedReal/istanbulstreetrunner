@@ -23,7 +23,7 @@ export const LANE_LERP = 11;
 export const CHUNK_LEN = 30;
 export const NUM_CHUNKS = 8;
 
-export const POWERUP_TIME: Record<"magnet" | "x2", number> = { magnet: 9, x2: 10 };
+export const POWERUP_TIME: Record<"magnet" | "x2" | "wings" | "carpet", number> = { magnet: 9, x2: 10, wings: 7, carpet: 9 };
 export const MAGNET_RANGE = 9;
 export const COIN_POINTS = 0; // coins are a separate currency, like Subway Surfers
 

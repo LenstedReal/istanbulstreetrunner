@@ -1,9 +1,36 @@
 import * as THREE from "three";
 
+import type { RunnerLook } from "../wardrobe";
 import { ObjectFactory } from "./objects";
 import { SCENE } from "./palette";
 
-/** Low-poly runner facing -Z. Built from boxes so it needs no asset loading. */
+export const DEFAULT_LOOK: RunnerLook = {
+  skin: SCENE.skin,
+  hair: SCENE.hair,
+  hairStyle: "short",
+  jacket: SCENE.jacket,
+  jacketTrim: SCENE.jacketDark,
+  pants: SCENE.pants,
+  shoes: SCENE.shoes,
+  cap: SCENE.cap,
+  bag: SCENE.cap,
+};
+
+export interface RunnerPose {
+  jumping: boolean;
+  rolling: boolean;
+  rollT: number;
+  crashed: boolean;
+  crashT: number;
+  idle: boolean;
+  flying: boolean;
+  carpet: boolean;
+  stumble: number;
+  /** -1..1 lean while changing lane. */
+  lean: number;
+}
+
+/** Low-poly runner facing -Z. Built from primitives so it needs no asset loading. */
 export class Runner {
   group = new THREE.Group();
   private body = new THREE.Group();
@@ -11,92 +38,193 @@ export class Runner {
   private legR = new THREE.Group();
   private armL = new THREE.Group();
   private armR = new THREE.Group();
+  private head = new THREE.Group();
   private shieldBubble: THREE.Mesh;
+  private wings: THREE.Group;
+  private carpet: THREE.Group;
+  private carpetCloth: THREE.Mesh;
+  private hairStyles: Record<RunnerLook["hairStyle"], THREE.Object3D>;
+  private capParts: THREE.Object3D[] = [];
+  private mats = {
+    skin: new THREE.MeshLambertMaterial(),
+    jacket: new THREE.MeshLambertMaterial(),
+    trim: new THREE.MeshLambertMaterial(),
+    pants: new THREE.MeshLambertMaterial(),
+    shoes: new THREE.MeshLambertMaterial(),
+    cap: new THREE.MeshLambertMaterial(),
+    hair: new THREE.MeshLambertMaterial(),
+    bag: new THREE.MeshLambertMaterial(),
+    sole: new THREE.MeshLambertMaterial({ color: 0x2a2626 }),
+    eye: new THREE.MeshLambertMaterial({ color: 0x1b1b1b }),
+  };
 
-  constructor(f: ObjectFactory) {
-    const mat = (c: number) => new THREE.MeshLambertMaterial({ color: c });
-    const skin = mat(SCENE.skin);
-    const jacket = mat(SCENE.jacket);
-    const jacketDark = mat(SCENE.jacketDark);
-    const pants = mat(SCENE.pants);
-    const shoes = mat(SCENE.shoes);
-    const cap = mat(SCENE.cap);
-    const hair = mat(SCENE.hair);
-
+  constructor(f: ObjectFactory, look: RunnerLook = DEFAULT_LOOK) {
+    const m = this.mats;
     const b = this.body;
-    b.add(f.part(jacket, 0.56, 0.6, 0.32, 0, 0.78));
-    b.add(f.part(jacketDark, 0.12, 0.6, 0.33, 0, 0.78));
-    b.add(f.part(pants, 0.5, 0.18, 0.3, 0, 0.66));
-    const head = new THREE.Mesh(f.sphere, skin);
-    head.scale.setScalar(0.23);
-    head.position.set(0, 1.62, 0);
-    b.add(head);
-    const hairM = new THREE.Mesh(f.sphere, hair);
-    hairM.scale.set(0.2, 0.12, 0.2);
-    hairM.position.set(0, 1.74, 0.03);
-    b.add(hairM);
-    const capM = new THREE.Mesh(f.sphere, cap);
-    capM.scale.set(0.245, 0.14, 0.245);
-    capM.position.set(0, 1.74, 0);
-    b.add(capM);
-    b.add(f.part(cap, 0.3, 0.05, 0.24, 0, 1.72, -0.23)); // cap visor points forward (-Z, direction of travel)
+    // Torso: jacket with zip stripe and collar, belt line.
+    b.add(f.part(m.jacket, 0.56, 0.6, 0.32, 0, 0.78));
+    b.add(f.part(m.trim, 0.1, 0.6, 0.33, 0, 0.78));
+    b.add(f.part(m.trim, 0.58, 0.08, 0.34, 0, 1.34));
+    b.add(f.part(m.pants, 0.5, 0.18, 0.3, 0, 0.66));
 
-    const limb = (pivot: THREE.Group, x: number, y: number, w: number, h: number, m: THREE.Material, foot?: THREE.Material) => {
+    // Head group: face, eyes, hair styles and cap.
+    const h = this.head;
+    h.position.set(0, 1.62, 0);
+    const face = new THREE.Mesh(f.sphere, m.skin);
+    face.scale.setScalar(0.23);
+    h.add(face);
+    for (const x of [-0.08, 0.08]) {
+      const eye = new THREE.Mesh(f.sphereLow, m.eye);
+      eye.scale.set(0.03, 0.035, 0.02);
+      eye.position.set(x, 0.03, -0.21);
+      h.add(eye);
+    }
+    const neck = f.part(m.skin, 0.12, 0.12, 0.12, 0, -0.3);
+    h.add(neck);
+    const short = new THREE.Group();
+    const s1 = new THREE.Mesh(f.sphere, m.hair);
+    s1.scale.set(0.235, 0.15, 0.235);
+    s1.position.set(0, 0.1, 0.03);
+    short.add(s1);
+    const long = new THREE.Group();
+    const l1 = new THREE.Mesh(f.sphere, m.hair);
+    l1.scale.set(0.245, 0.17, 0.245);
+    l1.position.set(0, 0.09, 0.02);
+    long.add(l1, f.part(m.hair, 0.4, 0.42, 0.14, 0, -0.32, 0.14));
+    const bun = new THREE.Group();
+    const b1 = new THREE.Mesh(f.sphere, m.hair);
+    b1.scale.set(0.24, 0.16, 0.24);
+    b1.position.set(0, 0.09, 0.02);
+    const b2 = new THREE.Mesh(f.sphere, m.hair);
+    b2.scale.setScalar(0.11);
+    b2.position.set(0, 0.22, 0.14);
+    bun.add(b1, b2);
+    const curly = new THREE.Group();
+    for (const [x, y, z, s] of [[0, 0.12, 0.02, 0.2], [-0.13, 0.06, 0.05, 0.13], [0.13, 0.06, 0.05, 0.13], [0, 0.04, 0.16, 0.15]] as const) {
+      const c = new THREE.Mesh(f.sphereLow, m.hair);
+      c.scale.setScalar(s);
+      c.position.set(x, y, z);
+      curly.add(c);
+    }
+    this.hairStyles = { short, long, bun, curly };
+    h.add(short, long, bun, curly);
+    const capDome = new THREE.Mesh(f.sphere, m.cap);
+    capDome.scale.set(0.25, 0.14, 0.25);
+    capDome.position.set(0, 0.12, 0);
+    const visor = f.part(m.cap, 0.3, 0.05, 0.24, 0, 0.08, -0.23);
+    h.add(capDome, visor);
+    this.capParts = [capDome, visor];
+    b.add(h);
+
+    const limb = (pivot: THREE.Group, x: number, y: number, w: number, hgt: number, mat: THREE.Material, foot: boolean) => {
       pivot.position.set(x, y, 0);
-      const seg = f.part(m, w, h, w + 0.04, 0, -h);
-      pivot.add(seg);
-      // Shoe toe extends forward (-Z)
-      if (foot) pivot.add(f.part(foot, w + 0.03, 0.12, 0.36, 0, -h - 0.02, -0.07));
-      else {
-        const hand = new THREE.Mesh(f.sphere, skin);
+      pivot.add(f.part(mat, w, hgt, w + 0.04, 0, -hgt));
+      if (foot) {
+        pivot.add(f.part(m.shoes, w + 0.03, 0.12, 0.36, 0, -hgt - 0.02, -0.07));
+        pivot.add(f.part(m.sole, w + 0.04, 0.04, 0.37, 0, -hgt - 0.04, -0.07));
+      } else {
+        pivot.add(f.part(m.trim, w + 0.02, 0.06, w + 0.06, 0, -hgt + 0.02));
+        const hand = new THREE.Mesh(f.sphere, m.skin);
         hand.scale.setScalar(0.09);
-        hand.position.set(0, -h - 0.04, 0);
+        hand.position.set(0, -hgt - 0.04, 0);
         pivot.add(hand);
       }
       b.add(pivot);
     };
-    limb(this.legL, -0.15, 0.72, 0.2, 0.62, pants, shoes);
-    limb(this.legR, 0.15, 0.72, 0.2, 0.62, pants, shoes);
-    limb(this.armL, -0.37, 1.3, 0.15, 0.55, jacket);
-    limb(this.armR, 0.37, 1.3, 0.15, 0.55, jacket);
+    limb(this.legL, -0.15, 0.72, 0.2, 0.62, m.pants, true);
+    limb(this.legR, 0.15, 0.72, 0.2, 0.62, m.pants, true);
+    limb(this.armL, -0.37, 1.3, 0.15, 0.55, m.jacket, false);
+    limb(this.armR, 0.37, 1.3, 0.15, 0.55, m.jacket, false);
+
+    // Backpack with straps.
+    b.add(f.part(m.bag, 0.4, 0.42, 0.18, 0, 0.9, 0.24));
+    b.add(f.part(m.trim, 0.36, 0.08, 0.2, 0, 1.22, 0.24));
+    b.add(f.part(m.trim, 0.08, 0.5, 0.06, -0.16, 0.86, 0.17));
+    b.add(f.part(m.trim, 0.08, 0.5, 0.06, 0.16, 0.86, 0.17));
+
+    // Seagull-feather wings (Martı Kanadı power-up).
+    const feather = new THREE.MeshLambertMaterial({ color: 0xf4f4f0, emissive: 0x333333 });
+    const featherTip = new THREE.MeshLambertMaterial({ color: 0x8d9196 });
+    this.wings = new THREE.Group();
+    for (const s of [-1, 1]) {
+      const w = new THREE.Group();
+      w.position.set(s * 0.2, 1.15, 0.2);
+      w.add(f.part(feather, 0.9, 0.05, 0.42, s * 0.45, 0));
+      w.add(f.part(feather, 0.6, 0.05, 0.3, s * 1.0, 0.0, 0.05));
+      w.add(f.part(featherTip, 0.3, 0.055, 0.26, s * 1.35, 0.0, 0.07));
+      w.rotation.z = s * 0.25;
+      this.wings.add(w);
+    }
+    this.wings.visible = false;
+    b.add(this.wings);
+
+    // Flying carpet (Uçan Halı power-up), stays level under the runner.
+    this.carpet = new THREE.Group();
+    this.carpetCloth = f.part(new THREE.MeshLambertMaterial({ color: 0xb5262e }), 1.2, 0.06, 1.8, 0, 0);
+    this.carpet.add(this.carpetCloth);
+    this.carpet.add(f.part(new THREE.MeshLambertMaterial({ color: 0xe2b04a, emissive: 0x3a2400 }), 0.8, 0.07, 1.3, 0, 0.005));
+    const tassel = new THREE.MeshLambertMaterial({ color: 0xe2b04a });
+    for (const z of [-0.95, 0.95]) for (let i = 0; i < 4; i++) this.carpet.add(f.part(tassel, 0.05, 0.03, 0.12, -0.45 + i * 0.3, 0.01, z));
+    this.carpet.visible = false;
 
     this.shieldBubble = new THREE.Mesh(
       f.sphere,
-      new THREE.MeshLambertMaterial({ color: SCENE.shieldBubble, transparent: true, opacity: 0.3, emissive: 0x1a6f84 }),
+      new THREE.MeshLambertMaterial({ color: SCENE.shieldBubble, transparent: true, opacity: 0.3, emissive: 0x1a6f84, depthWrite: false }),
     );
     this.shieldBubble.scale.set(0.9, 1.1, 0.9);
     this.shieldBubble.position.y = 0.95;
     this.shieldBubble.visible = false;
 
-    // Backpack
-    b.add(f.part(cap, 0.4, 0.42, 0.18, 0, 0.9, 0.24));
-    b.add(f.part(jacketDark, 0.08, 0.5, 0.06, -0.16, 0.86, 0.17));
-    b.add(f.part(jacketDark, 0.08, 0.5, 0.06, 0.16, 0.86, 0.17));
-
     b.traverse((c) => {
       if ((c as THREE.Mesh).isMesh) c.castShadow = true;
     });
-    this.group.add(b, this.shieldBubble);
+    this.carpet.traverse((c) => {
+      if ((c as THREE.Mesh).isMesh) c.castShadow = true;
+    });
+    this.group.add(b, this.carpet, this.shieldBubble);
+    this.setLook(look);
+  }
+
+  setLook(look: RunnerLook) {
+    const m = this.mats;
+    m.skin.color.set(look.skin);
+    m.hair.color.set(look.hair);
+    m.jacket.color.set(look.jacket);
+    m.trim.color.set(look.jacketTrim);
+    m.pants.color.set(look.pants);
+    m.shoes.color.set(look.shoes);
+    m.bag.color.set(look.bag);
+    if (look.cap !== null) m.cap.color.set(look.cap);
+    for (const p of this.capParts) p.visible = look.cap !== null;
+    for (const [style, obj] of Object.entries(this.hairStyles)) obj.visible = style === look.hairStyle;
+    // A cap hides most of short hair; long hair and buns still show below it.
+    if (look.cap !== null && look.hairStyle === "curly") this.hairStyles.curly.visible = false;
   }
 
   setShield(on: boolean) {
     this.shieldBubble.visible = on;
   }
 
-  animate(t: number, speedFactor: number, state: { jumping: boolean; rolling: boolean; rollT: number; crashed: boolean; crashT: number; idle: boolean }) {
+  animate(t: number, speedFactor: number, s: RunnerPose) {
     const b = this.body;
-    if (state.crashed) {
-      const k = Math.min(1, state.crashT / 0.5);
+    this.wings.visible = s.flying && !s.crashed;
+    this.carpet.visible = s.carpet && !s.crashed;
+    b.rotation.z = 0;
+    b.rotation.y = 0;
+    this.head.rotation.set(0, 0, 0);
+    if (s.crashed) {
+      const k = Math.min(1, s.crashT / 0.5);
       b.rotation.x = k * 1.35;
       b.position.y = -k * 0.1;
       b.scale.set(1, 1, 1);
       return;
     }
     b.scale.set(1, 1, 1);
-    if (state.idle) {
+    if (s.idle) {
       const ph = t * 2;
       b.position.y = Math.sin(ph) * 0.02;
       b.rotation.x = 0;
+      this.head.rotation.y = Math.sin(t * 0.7) * 0.25;
       this.legL.rotation.x = this.legR.rotation.x = 0;
       this.armL.rotation.x = this.armR.rotation.x = 0;
       this.armL.rotation.z = 0.12 + Math.sin(ph) * 0.03;
@@ -104,8 +232,39 @@ export class Runner {
       return;
     }
     const ph = t * 9 * speedFactor;
-    if (state.rolling) {
-      const k = state.rollT;
+    b.rotation.z = -s.lean * 0.18;
+    if (s.flying) {
+      // Arms out, legs trailing, wings flapping.
+      b.rotation.x = -0.5;
+      b.position.y = Math.sin(t * 3) * 0.06;
+      this.legL.rotation.x = 0.4 + Math.sin(t * 4) * 0.1;
+      this.legR.rotation.x = 0.5 - Math.sin(t * 4) * 0.1;
+      this.armL.rotation.set(0, 0, 1.2);
+      this.armR.rotation.set(0, 0, -1.2);
+      const flap = Math.sin(t * 9) * 0.35;
+      this.wings.children[0].rotation.z = -0.25 - flap;
+      this.wings.children[1].rotation.z = 0.25 + flap;
+      return;
+    }
+    this.armL.rotation.z = 0.1;
+    this.armR.rotation.z = -0.1;
+    if (s.carpet) {
+      // Kneeling surfer pose on the carpet; the cloth ripples.
+      b.rotation.x = -0.05;
+      b.position.y = -0.25 + Math.sin(t * 2.4) * 0.03;
+      this.legL.rotation.x = -1.2;
+      this.legR.rotation.x = 0.6;
+      this.armL.rotation.x = -0.6;
+      this.armR.rotation.x = -0.6;
+      this.armL.rotation.z = 0.7;
+      this.armR.rotation.z = -0.7;
+      this.carpet.rotation.x = Math.sin(t * 3) * 0.04;
+      this.carpet.rotation.z = Math.sin(t * 2.2) * 0.05 + s.lean * 0.15;
+      this.carpetCloth.scale.y = 0.06;
+      return;
+    }
+    if (s.rolling) {
+      const k = s.rollT;
       b.scale.set(1, 0.5, 1);
       b.rotation.x = -0.6 + Math.sin(k * Math.PI) * 0.4;
       b.position.y = 0;
@@ -113,7 +272,7 @@ export class Runner {
       this.armL.rotation.x = this.armR.rotation.x = -1.5;
       return;
     }
-    if (state.jumping) {
+    if (s.jumping) {
       b.rotation.x = -0.1;
       b.position.y = 0;
       this.legL.rotation.x = 0.9;
@@ -122,13 +281,14 @@ export class Runner {
       this.armR.rotation.x = -2.4;
       return;
     }
-    b.rotation.x = -0.14;
+    // Run cycle; a stumble adds a wobble and a look back over the shoulder.
+    const wobble = s.stumble > 0 ? Math.sin(t * 14) * 0.08 * Math.min(1, s.stumble) : 0;
+    b.rotation.x = -0.14 + wobble;
     b.position.y = Math.abs(Math.sin(ph)) * 0.06;
+    if (s.stumble > 0) this.head.rotation.y = Math.sin(t * 2) > 0.6 ? 0.9 : 0;
     this.legL.rotation.x = Math.sin(ph) * 0.95;
     this.legR.rotation.x = -Math.sin(ph) * 0.95;
     this.armL.rotation.x = -Math.sin(ph) * 0.85 - 0.3;
     this.armR.rotation.x = Math.sin(ph) * 0.85 - 0.3;
-    this.armL.rotation.z = 0.1;
-    this.armR.rotation.z = -0.1;
   }
 }
