@@ -1,4 +1,4 @@
-// Non-color design tokens from /app/design_guidelines.json.
+// Non-colour design tokens: fonts, spacing, radius.
 export const fonts = {
   display: "Fredoka-Bold",
   displayMedium: "Fredoka-SemiBold",
