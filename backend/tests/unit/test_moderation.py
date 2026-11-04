@@ -52,3 +52,11 @@ def test_fold_handles_turkish_i_and_leet():
 
 def test_messages_are_turkish():
     assert "karakter" in check_nickname("A").message
+
+
+def test_nickname_key_folds_spelling_families():
+    from app.moderation import nickname_key
+
+    assert nickname_key("Boğaz Kaplanı") == nickname_key("BOĞAZ KAPLANI") == nickname_key("bogaz   kaplani")
+    assert nickname_key("Ali") == nickname_key("A l i") == nickname_key("ALİ")
+    assert nickname_key("Ali") != nickname_key("Veli")

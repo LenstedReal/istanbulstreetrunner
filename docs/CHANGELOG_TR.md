@@ -214,3 +214,14 @@ Bu ortamda **çalıştırılan** testler:
 - Varsayılan takma ad "Koşucu####".
 - **Veri tabanı**: MongoDB çalışıyor (dünya sıralaması ve hesap kaydı Render'daki sunucudan geliyor). Görevler/taşıma kodu/hesap silme çalışmıyordu çünkü Render hâlâ `main` dalındaki 1.0.x sunucusunu çalıştırıyor; `v2` `main`'e birleşince Render 2.0 sunucusunu kurar ve bunlar açılır. Render ortam değişkenleri (`MONGO_URL`, `DB_NAME`) aynı; GitHub tarafında bir şey gerekmez.
 - Geri alma: `git revert <bu commit>`.
+
+
+## 13. Tek takma ad, hesap silme akışı, hukuki metinler (ek commit)
+
+- **Takma adlar artık tek**: sunucu her adı katlanmış bir anahtara indirir (büyük/küçük harf, Türkçe harfler, boşluk ve benzer yazımlar aynı sayılır: "Boğaz Kaplanı" = "BOGAZ KAPLANI"). Alınmış bir ad yeni hesapta veya ad değiştirmede **409 "Bu takma ad alınmış"** ile reddedilir; hesap silinince ad serbest kalır. `players.nickname_key` için tekil (sparse) indeks; eski oyuncular anahtarı ilk ad değişikliğinde alır, mevcut veriye dokunulmaz. Oyun 409'da "Bu takma ad başka bir oyuncuda" der; ilk açılışta rastgele ad çakışırsa yeni bir rastgele adla tekrar dener. 1.0.x sunucuda ad artık önce sunucuya sorulur, sonra telefonda kaydedilir.
+- **Hesap silme**: silme sunucuda başarılıysa yerel temizlik hataları artık "silinemedi" mesajına dönüşmez; hata mesajları gerçeği söyler (sunucuya ulaşılamadı / sunucu reddetti, hiçbir şey silinmedi). Silmeden sonra ayarlar kapanır, **"Hesabın silindi"** ekranı yeni oyuncu adını gösterir ve "Yeni oyuncu olarak başla" (ya da geri tuşu) telefonu yepyeni bir hesapla sıfırdan başlatır. Değerlendirme hatırlatıcısı dahil kişisel oyun verileri telefondan da silinir.
+- **Gizlilik politikası**: takma ad, skor ve sıranın herkese açık olduğu (sıralama, arkadaş listesi, şikâyetler), takma ada kişisel bilgi yazılmaması gerektiği, adların tek ve denetimli olduğu açıkça yazıldı.
+- **Lisanslar sayfasına "Markalar ve isimler"** bölümü: Google Play/Android/AdMob (Google LLC), RevenueCat, Render, MongoDB Atlas marka bildirimleri; semt adlarının kamuya açık yer adları olduğu; tramvay/otobüs/vapur/binaların stilize hayali tasarımlar olduğu ve İBB, İETT, Metro İstanbul, Şehir Hatları ile bağlantı bulunmadığı; NCS sanatçı adlarının zorunlu kaynak göstermesi olduğu.
+- Kullanılmayan eski metinler kaldırıldı (vapur jetonu ile semt açma: artık semtler hedefle açılıyor).
+- Testler: `test_nickname_is_unique` (API), `test_nickname_key_folds_spelling_families` (birim), çevrimdışı senaryo koşucusu 409 kontrolleri.
+- Geri alma: `git revert <bu commit>`; indeks sparse olduğundan eski sunucu da aynı veriyle çalışır.

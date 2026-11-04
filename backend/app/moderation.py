@@ -81,6 +81,11 @@ def _tokens(folded: str) -> list[str]:
     return [t for t in re.split(r"[^a-z0-9]+", folded) if t]
 
 
+def nickname_key(value: str) -> str:
+    """One key per nickname spelling family: 'Ali', 'ALİ', 'a1i' and 'A l i' collide."""
+    return "".join(_tokens(fold(normalize(value))))
+
+
 def check_nickname(raw: str) -> NicknameCheck:
     value = normalize(raw)
     if len(value) < MIN_LEN:

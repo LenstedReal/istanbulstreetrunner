@@ -18,6 +18,7 @@
      "h": "2. Hesap ve oyun verileri",
      "p": [
       "Oyun ilk açılışta e-posta veya telefon istemeden anonim bir oyun hesabı oluşturur. Bu hesapta şunlar tutulur: rastgele oyuncu kimliği, herkese açık rastgele kimlik, takma ad, arkadaş kodu, en yüksek skor, toplam altın, koşu sayısı, arkadaş listesi, engellediğin oyuncular, gönderdiğin şikâyetler, günlük görev ilerlemesi ve bulut kaydı (anahtarlar, açılan semtler, kıyafetler).",
+      "Takma adın, en yüksek skorun ve sıralaman herkese açıktır: dünya sıralamasında, arkadaşlarının listesinde ve seni bildiren oyuncuların şikâyetlerinde görünür. Bu yüzden takma adında gerçek adını, soyadını, telefon numaranı veya başka kişisel bilgini kullanma. Takma adlar tektir (aynı ad iki oyuncuda olamaz), uygunsuz adlar sunucu tarafından reddedilir ve takma adını istediğin zaman Ayarlar'dan değiştirebilirsin. Arkadaş kodun yalnızca sana gösterilir; onu kime verdiğin senin seçimindir.",
       "Her koşunun sonunda skor, altın, mesafe, süre, devam etme sayısı, semt ve zıplama/eğilme/güçlendirici sayıları sunucuya gönderilir. Bunlar skorun gerçek bir koşudan geldiğini doğrulamak (hile önleme) için kullanılır.",
       "Hesabın telefonda güvenli depolamada saklanan bir oturum anahtarıyla korunur. Sunucuda bu anahtarın yalnızca geri döndürülemez özeti (hash) tutulur.",
       "Ayarlar, yerel skorlar ve tercihler yalnızca telefonunda saklanır."
@@ -117,6 +118,7 @@
      "h": "2. Account and game data",
      "p": [
       "On first launch the game creates an anonymous game account without asking for an e-mail address or phone number. It stores: a random player ID, a random public ID, your nickname, friend code, best score, total coins, number of runs, friend list, players you blocked, reports you sent, daily mission progress and a cloud save (keys, unlocked districts, clothes).",
+      "Your nickname, best score and rank are public: they appear in the world ranking, in your friends' lists and in reports other players file about you. So do not put your real name, surname, phone number or other personal details in your nickname. Nicknames are unique (two players cannot share one), inappropriate names are refused by the server, and you can change yours at any time in Settings. Your friend code is shown only to you; whom you give it to is your choice.",
       "At the end of every run the score, coins, distance, duration, number of revives, district and counts of jumps, rolls and power-ups are sent to the server. They are used to check that a score comes from a real run (anti-cheat).",
       "Your account is protected by a session key kept in the phone's secure storage. The server only stores an irreversible hash of that key.",
       "Settings, local scores and preferences stay on your phone."
@@ -365,6 +367,15 @@
      "p": [
       "Lisans metinlerinin tam hâli: https://opensource.org/licenses (MIT, Apache-2.0, BSD-3-Clause) ve https://openfontlicense.org (SIL OFL 1.1)."
      ]
+    },
+    {
+     "h": "Markalar ve isimler",
+     "p": [
+      "Google Play, Android ve AdMob, Google LLC'nin ticari markalarıdır. RevenueCat, Render ve MongoDB Atlas ilgili şirketlerin markalarıdır. Bu oyun Google, RevenueCat, Render veya MongoDB tarafından üretilmemiş, desteklenmemiş ve onaylanmamıştır; adları yalnızca kullanılan hizmetleri belirtmek için geçer.",
+      "İstiklal, Galata, Eminönü, Boğaz, Galata Köprüsü gibi semt ve yer adları İstanbul'un kamuya açık coğrafi adlarıdır. Oyundaki tramvay, otobüs, vapur ve binalar stilize, hayali tasarımlardır; İstanbul Büyükşehir Belediyesi, İETT, Metro İstanbul, Şehir Hatları veya başka bir kurumla bağlantı ya da onay yoktur.",
+      "Müzik bölümündeki sanatçı ve parça adları, NoCopyrightSounds yayın koşullarının gerektirdiği kaynak göstermesi için yer alır; sanatçıların oyunla bağlantısı yoktur.",
+      "Oyuncuların seçtiği takma adlar oyunculara aittir; oyun bu adları yalnızca sıralama ve arkadaş listelerinde gösterir."
+     ]
     }
    ]
   },
@@ -419,6 +430,15 @@
      "h": "License texts",
      "p": [
       "Full license texts: https://opensource.org/licenses (MIT, Apache-2.0, BSD-3-Clause) and https://openfontlicense.org (SIL OFL 1.1)."
+     ]
+    },
+    {
+     "h": "Trademarks and names",
+     "p": [
+      "Google Play, Android and AdMob are trademarks of Google LLC. RevenueCat, Render and MongoDB Atlas are trademarks of their respective companies. This game is not made, sponsored or endorsed by Google, RevenueCat, Render or MongoDB; the names appear only to identify the services used.",
+      "District and place names such as İstiklal, Galata, Eminönü, Bosphorus and Galata Bridge are public geographic names of Istanbul. The tram, bus, ferry and buildings in the game are stylised, fictional designs; there is no connection with or endorsement by the Istanbul Metropolitan Municipality, İETT, Metro İstanbul, Şehir Hatları or any other organisation.",
+      "Artist and track names in the Music section are the attribution required by the NoCopyrightSounds release terms; the artists are not connected with the game.",
+      "Nicknames chosen by players belong to the players; the game shows them only in rankings and friend lists."
      ]
     }
    ]

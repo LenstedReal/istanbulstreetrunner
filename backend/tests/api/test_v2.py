@@ -50,6 +50,20 @@ def test_nickname_rules(client):
     assert r.status_code == 200 and r.json()["nickname"] == "Yeni Ad"
 
 
+def test_nickname_is_unique(client):
+    token, _ = v2_player(client, "Boğaz Kaplanı")
+    # Same name, different case/spelling family: refused for a new player and for a rename.
+    assert client.post("/api/v2/players", json={"nickname": "BOĞAZ KAPLANI"}).status_code == 409
+    assert client.post("/api/v2/players", json={"nickname": "bogaz kaplani"}).status_code == 409
+    other, _ = v2_player(client, "Başka Biri")
+    assert client.patch("/api/v2/me", json={"nickname": "boğaz kaplanı"}, headers=auth(other)).status_code == 409
+    # The owner may keep (re-save) their own name.
+    assert client.patch("/api/v2/me", json={"nickname": "Boğaz Kaplanı"}, headers=auth(token)).status_code == 200
+    # Deleting frees the name.
+    assert client.delete("/api/v2/me", headers=auth(token)).status_code == 200
+    assert client.post("/api/v2/players", json={"nickname": "Boğaz Kaplanı"}).status_code == 200
+
+
 def test_claim_flow(client):
     p = legacy_player(client, "Eski Hesap")
     assert client.post("/api/v2/auth/claim", json={"player_id": p["id"], "friend_code": "ZZZZZZ"}).status_code == 404

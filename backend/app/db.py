@@ -13,6 +13,9 @@ INDEXES: list[tuple[str, object, dict]] = [
     ("friendships", [("player_id", 1), ("friend_id", 1)], {"unique": True}),
     # 2.0 additions
     ("players", "public_id", {"unique": True, "sparse": True}),
+    # Nicknames are unique (folded: case, Turkish letters, look-alikes). Old players get the
+    # key the first time they rename, so the index stays sparse.
+    ("players", "nickname_key", {"unique": True, "sparse": True}),
     ("players", [("high_score", -1), ("best_at", 1)], {}),
     ("friendships", "friend_id", {}),
     ("credentials", "token_hash", {"unique": True}),

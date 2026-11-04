@@ -3,7 +3,7 @@ import React, { createContext, useCallback, useContext, useEffect, useMemo, useR
 import { AppState, Platform } from "react-native";
 import Purchases, { type CustomerInfo } from "react-native-purchases";
 
-import { api, ApiError, hasBackend, onWakingChange, setAuthToken, type AuthOut, type MeOut, type MissionsOut } from "@/src/api";
+import { api, ApiError, hasBackend, onWakingChange, setAuthToken, type AuthOut, type MeOut, type MissionsOut, type PlayerOut } from "@/src/api";
 import { audio, DEFAULT_TRACK } from "@/src/audio";
 import {
   coinBalance,
@@ -128,6 +128,8 @@ interface ProfileApi extends ProfileState {
   /** 0-based level of the district the next run starts in. */
   levelForRun: () => number;
   deleteAccount: () => Promise<void>;
+  /** After deleteAccount: start this phone as a brand-new player (new account, new nickname). */
+  startFresh: () => Promise<void>;
   createTransferCode: () => Promise<{ code: string; expires_at: string }>;
   redeemTransferCode: (code: string) => Promise<void>;
   resolveConflictNewProfile: () => Promise<void>;
@@ -505,8 +507,16 @@ export function ProfileProvider({ children }: { children: React.ReactNode }) {
       return s.playerId;
     }
     try {
-      const p = await api.createPlayer(s.nickname || randomNickname());
-      await Promise.all([storage.setItem(KEYS.playerId, p.id), storage.setItem(KEYS.friendCode, p.friend_code)]);
+      let p: PlayerOut;
+      try {
+        p = await api.createPlayer(s.nickname || randomNickname());
+      } catch (e) {
+        // The local name is taken or not allowed on the server: start with a fresh random one.
+        if (e instanceof ApiError && (e.status === 409 || e.status === 422)) p = await api.createPlayer(randomNickname());
+        else throw e;
+      }
+      await Promise.all([storage.setItem(KEYS.playerId, p.id), storage.setItem(KEYS.friendCode, p.friend_code), storage.setItem(KEYS.nickname, p.nickname)]);
+      if (p.nickname !== s.nickname) patch({ nickname: p.nickname });
       patch({ account: "legacy", playerId: p.id, friendCode: p.friend_code });
       return p.id;
     } catch {
@@ -520,8 +530,8 @@ export function ProfileProvider({ children }: { children: React.ReactNode }) {
     try {
       auth = await api.createV2(stateRef.current.nickname || randomNickname());
     } catch (e) {
-      // The local nickname may not pass the server's rules; start with a neutral one.
-      if (e instanceof ApiError && e.status === 422) auth = await api.createV2(randomNickname());
+      // The local nickname may be taken (409) or not pass the server's rules (422); start with a fresh random one.
+      if (e instanceof ApiError && (e.status === 409 || e.status === 422)) auth = await api.createV2(randomNickname());
       else throw e;
     }
     await adopt(auth.player, auth.token);
@@ -646,19 +656,25 @@ export function ProfileProvider({ children }: { children: React.ReactNode }) {
 
   const deleteAccount = useCallback(async () => {
     if (stateRef.current.account !== "online") throw new ApiError(0, "offline");
+    // Only the server call can fail. Once it succeeded the account is gone, so the
+    // local clean-up below must never turn into a "could not delete" message.
     await api.deleteMe();
     deletedThisSession.current = true;
     setAuthToken(null);
     session.current = null;
     saveRev.current = 0;
-    await storage.secureRemove(TOKEN_KEY);
-    const wipe = [
-      KEYS.playerId, KEYS.friendCode, KEYS.publicId, KEYS.bestScore, KEYS.totalCoins, KEYS.localScores, KEYS.keys, KEYS.coinsSpent,
-      KEYS.coinsBonus, KEYS.progress, KEYS.wardrobe, KEYS.saveRev, KEYS.pendingRuns, KEYS.hintsSeen, KEYS.welcomePending,
-    ];
-    await Promise.all(wipe.map((k) => storage.removeItem(k)));
     const nick = randomNickname();
-    await storage.setItem(KEYS.nickname, nick);
+    try {
+      await storage.secureRemove(TOKEN_KEY);
+      const wipe = [
+        KEYS.playerId, KEYS.friendCode, KEYS.publicId, KEYS.bestScore, KEYS.totalCoins, KEYS.localScores, KEYS.keys, KEYS.coinsSpent,
+        KEYS.coinsBonus, KEYS.progress, KEYS.wardrobe, KEYS.saveRev, KEYS.pendingRuns, KEYS.hintsSeen, KEYS.welcomePending, KEYS.rate,
+      ];
+      await Promise.all(wipe.map((k) => storage.removeItem(k)));
+      await storage.setItem(KEYS.nickname, nick);
+    } catch (e) {
+      console.warn("[profile] local wipe after deletion", e);
+    }
     patch({
       account: "none",
       playerId: null,
@@ -677,6 +693,12 @@ export function ProfileProvider({ children }: { children: React.ReactNode }) {
       hintsSeen: [],
     });
   }, [patch]);
+
+  const startFresh = useCallback(async () => {
+    deletedThisSession.current = false;
+    patch({ account: "loading" });
+    await ensureOnline();
+  }, [patch, ensureOnline]);
 
   // ------------------------------------------------------------- presence
   useEffect(() => {
@@ -801,11 +823,12 @@ export function ProfileProvider({ children }: { children: React.ReactNode }) {
         await storage.setItem(KEYS.nickname, me.nickname);
         return;
       }
-      patch({ nickname: nick });
-      await storage.setItem(KEYS.nickname, nick);
       const id = stateRef.current.playerId;
+      // On the 1.0.x server the name is also checked there (taken / not allowed) before it is kept.
       if (account === "legacy" && id) await api.updateNickname(id, nick);
       else if (account !== "none") throw new ApiError(0, "offline");
+      patch({ nickname: nick });
+      await storage.setItem(KEYS.nickname, nick);
     },
     [patch],
   );
@@ -1057,6 +1080,7 @@ export function ProfileProvider({ children }: { children: React.ReactNode }) {
       selectDistrict,
       levelForRun,
       deleteAccount,
+      startFresh,
       createTransferCode,
       redeemTransferCode,
       resolveConflictNewProfile,
@@ -1066,7 +1090,7 @@ export function ProfileProvider({ children }: { children: React.ReactNode }) {
       state, look, recordRun, setNickname, setHaptics, setSound, setMusic, setShadows, setMusicTrack, markTutorialSeen, resetTutorial,
       resetLocalData, ensureOnline, recoverOnline, addKeys, spendKeys, registerPlay, registerSongChange, setAdFree, takeRunSession,
       setGraphics, setLanguage, setOnlineVisible, markHintSeen, refreshMissions, claimMission, buyItem, equipItem, selectDistrict,
-      levelForRun, deleteAccount, createTransferCode, redeemTransferCode, resolveConflictNewProfile, retryConnect, answerRate,
+      levelForRun, deleteAccount, startFresh, createTransferCode, redeemTransferCode, resolveConflictNewProfile, retryConnect, answerRate,
     ],
   );
 

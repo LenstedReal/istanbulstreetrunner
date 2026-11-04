@@ -55,6 +55,7 @@ export default function RootLayout() {
                 <Stack.Screen name="terms" options={{ animation: "slide_from_right" }} />
                 <Stack.Screen name="licenses" options={{ animation: "slide_from_right" }} />
                 <Stack.Screen name="delete-account" options={{ animation: "slide_from_right" }} />
+                <Stack.Screen name="account-deleted" options={{ animation: "fade", gestureEnabled: false }} />
               </Stack>
             </ProfileProvider>
           </KeyboardProvider>

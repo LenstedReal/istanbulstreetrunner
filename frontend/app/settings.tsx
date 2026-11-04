@@ -109,8 +109,8 @@ export default function SettingsScreen() {
       setDraft(null);
       setMsg(t("settings.saved"));
     } catch (e) {
-      // Moderation errors come back as a readable server message.
-      setMsg(e instanceof ApiError && e.status === 422 ? e.message : t("settings.savedLocal"));
+      // 409: taken by another player; 422: not allowed. Both come as a readable server message.
+      setMsg(e instanceof ApiError && e.status === 409 ? t("settings.nickTaken") : e instanceof ApiError && e.status === 422 ? e.message : t("settings.savedLocal"));
     } finally {
       setSaving(false);
     }
@@ -197,12 +197,13 @@ export default function SettingsScreen() {
     try {
       await profile.deleteAccount();
       setConfirmDelete(false);
-      setAccountMsg(t("account.deleted"));
-    } catch {
-      setAccountMsg(t("account.deleteFailed"));
-    } finally {
-      setAccountBusy(false);
+      // The old identity is gone: leave Settings and start over as a new player.
+      router.replace("/account-deleted");
+      return;
+    } catch (e) {
+      setAccountMsg(e instanceof ApiError && e.status !== 0 ? t("account.deleteFailedServer", { status: e.status }) : t("account.deleteFailed"));
     }
+    setAccountBusy(false);
   };
 
   const accountLine =

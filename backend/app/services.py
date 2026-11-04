@@ -12,7 +12,7 @@ from fastapi import HTTPException
 from pymongo import ReturnDocument
 from pymongo.errors import DuplicateKeyError
 
-from . import anticheat, missions, security
+from . import anticheat, missions, moderation, security
 from .models import MeOut, PlayerOut, PublicPlayer
 
 log = logging.getLogger("isr")
@@ -135,13 +135,31 @@ def me_out(doc: dict, *, rank: Optional[int] = None) -> MeOut:
     )
 
 
+NICKNAME_TAKEN = "Bu takma ad alınmış, başka bir ad seç"
+
+
 # ----------------------------------------------------------------- players
+async def nickname_taken(db, nickname: str, *, except_id=None) -> bool:
+    """Is this nickname (or a look-alike) owned by another player?"""
+    key = moderation.nickname_key(nickname)
+    if not key:
+        return False
+    query: dict[str, Any] = {"nickname_key": key}
+    if except_id is not None:
+        query["_id"] = {"$ne": except_id}
+    return await db.players.find_one(query, {"_id": 1}) is not None
+
+
 async def create_player(db, nickname: str, *, claimed: bool) -> dict:
-    """Insert a player; retries when the random friend code or public id collides."""
+    """Insert a player; retries when the random friend code or public id collides.
+    A nickname another player already uses is refused with 409."""
+    if await nickname_taken(db, nickname):
+        raise HTTPException(409, NICKNAME_TAKEN)
     for _ in range(12):
         t = now()
         doc: dict[str, Any] = {
             "nickname": nickname,
+            "nickname_key": moderation.nickname_key(nickname),
             "friend_code": security.new_friend_code(),
             "public_id": security.new_public_id(),
             "high_score": 0,
@@ -156,6 +174,9 @@ async def create_player(db, nickname: str, *, claimed: bool) -> dict:
         try:
             res = await db.players.insert_one(doc)
         except DuplicateKeyError:
+            # Two players chose the same nickname at the same moment, or a random code collided.
+            if await nickname_taken(db, nickname):
+                raise HTTPException(409, NICKNAME_TAKEN) from None
             continue
         doc["_id"] = res.inserted_id
         return doc
@@ -163,8 +184,15 @@ async def create_player(db, nickname: str, *, claimed: bool) -> dict:
 
 
 async def set_nickname(db, doc: dict, nickname: str) -> None:
-    await db.players.update_one({"_id": doc["_id"]}, {"$set": {"nickname": nickname, "updated_at": now()}})
+    if await nickname_taken(db, nickname, except_id=doc["_id"]):
+        raise HTTPException(409, NICKNAME_TAKEN)
+    key = moderation.nickname_key(nickname)
+    try:
+        await db.players.update_one({"_id": doc["_id"]}, {"$set": {"nickname": nickname, "nickname_key": key, "updated_at": now()}})
+    except DuplicateKeyError:
+        raise HTTPException(409, NICKNAME_TAKEN) from None
     doc["nickname"] = nickname
+    doc["nickname_key"] = key
 
 
 def is_claimed(doc: dict) -> bool:
