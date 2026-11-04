@@ -104,7 +104,7 @@ const useStyles = makeStyles((colors) => ({
   },
   logoWrap: { width: 160, height: 160, borderRadius: 36, overflow: "hidden" },
   logo: { width: 160, height: 160 },
-  title: { fontFamily: fonts.display, fontSize: 40, lineHeight: 44, color: colors.onSurfaceInverse, textAlign: "center", letterSpacing: 1 },
+  title: { fontFamily: fonts.display, fontSize: 40, lineHeight: 52, paddingTop: 4, includeFontPadding: true, color: colors.onSurfaceInverse, textAlign: "center", letterSpacing: 1 },
   bottom: { position: "absolute", bottom: 72, left: spacing.xxl, right: spacing.xxl, alignItems: "center", gap: spacing.md },
   track: { width: "100%", height: 10, borderRadius: radius.pill, backgroundColor: colors.hudShadow, overflow: "hidden" },
   fill: { height: "100%", borderRadius: radius.pill, backgroundColor: colors.brandPrimary },

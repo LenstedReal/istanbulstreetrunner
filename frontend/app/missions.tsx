@@ -48,10 +48,26 @@ export default function MissionsScreen() {
     <View style={styles.root} testID="missions-screen">
       <ScreenHeader title={t("missions.title")} testID="missions" />
       <ScrollView contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + spacing.xl }]}>
-        {profile.account !== "online" ? (
+        {profile.account === "loading" ? (
           <View style={styles.center}>
+            <ActivityIndicator color={colors.brandPrimary} />
+            <Text style={styles.help}>{t("common.loading")}</Text>
+          </View>
+        ) : profile.account === "legacy" ? (
+          <View style={styles.center} testID="missions-server-old">
+            <Ionicons name="construct-outline" size={40} color={colors.muted} />
+            <Text style={[styles.help, styles.centerText]}>{t("missions.serverOld")}</Text>
+          </View>
+        ) : profile.account === "offline" ? (
+          <View style={styles.center} testID="missions-offline">
             <Ionicons name="cloud-offline-outline" size={40} color={colors.muted} />
-            <Text style={styles.help}>{t("missions.offline")}</Text>
+            <Text style={[styles.help, styles.centerText]}>{t("missions.offline")}</Text>
+            <ChunkyButton testID="missions-retry" label={t("account.retry")} variant="neutral" onPress={() => void profile.retryConnect()} />
+          </View>
+        ) : profile.account !== "online" ? (
+          <View style={styles.center}>
+            <Ionicons name="person-circle-outline" size={40} color={colors.muted} />
+            <Text style={[styles.help, styles.centerText]}>{t("missions.accountIssue")}</Text>
           </View>
         ) : profile.missions === null ? (
           <View style={styles.center}>
@@ -100,5 +116,6 @@ const useStyles = makeStyles((colors) => ({
   fill: { height: "100%", borderRadius: radius.pill },
   row: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: spacing.sm },
   help: { fontFamily: fonts.text, fontSize: 13, color: colors.muted, flexShrink: 1 },
+  centerText: { textAlign: "center" },
   msg: { fontFamily: fonts.textBold, fontSize: 14, color: colors.info, textAlign: "center" },
 }));

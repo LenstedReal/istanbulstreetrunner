@@ -53,14 +53,20 @@ export default function SettingsScreen() {
   const [redeemCode, setRedeemCode] = useState("");
   const [subscriptionBusy, setSubscriptionBusy] = useState(false);
   const [subscriptionMsg, setSubscriptionMsg] = useState<string | null>(null);
-  const [price, setPrice] = useState<string | null>(null);
+  /** undefined: still loading; null: Google Play has no product for this install; string: the price. */
+  const [price, setPrice] = useState<string | null | undefined>(undefined);
   const [privacyOptions, setPrivacyOptions] = useState(() => ads.privacyOptionsRequired());
 
   useEffect(() => {
     let alive = true;
-    loadMonthlyPackage().then((pkg) => alive && setPrice(pkg?.product.priceString ?? null));
+    // Without Google Play (a sideloaded APK) or without network the offer may never come: stop waiting after 15 s.
+    const timer = setTimeout(() => alive && setPrice((p) => (p === undefined ? null : p)), 15000);
+    loadMonthlyPackage()
+      .then((pkg) => alive && setPrice(pkg?.product.priceString ?? null))
+      .catch(() => alive && setPrice(null));
     return () => {
       alive = false;
+      clearTimeout(timer);
     };
   }, []);
 
@@ -214,7 +220,9 @@ export default function SettingsScreen() {
   const online = profile.account === "online";
   const g = profile.graphics;
   const qualityName = (q: QualityPref) => (q === "auto" ? t("settings.qualityAuto") : t(`settings.quality.${q}`));
-  const priceText = price ?? t("sub.priceLoading");
+  const priceReady = typeof price === "string";
+  const monthlyTitle = priceReady ? t("sub.monthly", { price }) : price === undefined ? t("sub.monthly", { price: t("sub.priceLoading") }) : t("sub.monthlyPlain");
+  const subscribeLabel = priceReady ? t("sub.subscribe", { price }) : t("sub.subscribePlain");
 
   return (
     <View style={styles.root} testID="settings-screen">
@@ -262,6 +270,11 @@ export default function SettingsScreen() {
             <Text style={[styles.rowTitle, styles.rowText]}>{accountLine}</Text>
             {profile.account === "offline" ? <ChunkyButton testID="settings-retry-connect" label={t("account.retry")} variant="neutral" onPress={() => void profile.retryConnect()} /> : null}
           </View>
+          {profile.account === "legacy" ? (
+            <Text style={styles.help} testID="settings-account-legacy">
+              {t("account.legacyHelp")}
+            </Text>
+          ) : null}
           <View style={styles.divider} />
           <Text style={styles.rowTitle}>{t("account.transferTitle")}</Text>
           <Text style={styles.help}>{t("account.transferHelp")}</Text>
@@ -273,7 +286,10 @@ export default function SettingsScreen() {
               <Text style={styles.help}>{t("account.codeValid")}</Text>
             </View>
           ) : (
-            <ChunkyButton testID="settings-make-code" label={t("account.makeCode")} icon="swap-horizontal" variant="secondary" disabled={!online || accountBusy} onPress={makeCode} />
+            <>
+              <ChunkyButton testID="settings-make-code" label={t("account.makeCode")} icon="swap-horizontal" variant="secondary" disabled={!online || accountBusy} onPress={makeCode} />
+              {!online ? <Text style={styles.help}>{profile.account === "legacy" ? t("account.needServer") : t("account.needOnline")}</Text> : null}
+            </>
           )}
           <View style={styles.inlineRow}>
             <TextInput
@@ -310,16 +326,21 @@ export default function SettingsScreen() {
               <Ionicons name="star" size={20} color={colors.onBrandTertiary} />
             </View>
             <View style={styles.rowText}>
-              <Text style={styles.rowTitle}>{profile.adFree ? t("sub.active") : t("sub.monthly", { price: priceText })}</Text>
+              <Text style={styles.rowTitle}>{profile.adFree ? t("sub.active") : monthlyTitle}</Text>
               <Text style={styles.help}>{t("sub.perks")}</Text>
+              {!profile.adFree && price === null ? (
+                <Text style={styles.help} testID="settings-subscription-unavailable">
+                  {t("sub.unavailableHelp")}
+                </Text>
+              ) : null}
             </View>
           </View>
           <ChunkyButton
             testID="settings-adfree-button"
-            label={subscriptionBusy ? t("sub.busy") : profile.adFree ? t("sub.manage") : t("sub.subscribe", { price: priceText })}
+            label={subscriptionBusy ? t("sub.busy") : profile.adFree ? t("sub.manage") : subscribeLabel}
             icon="card"
             variant="gold"
-            disabled={subscriptionBusy || (!profile.adFree && !price)}
+            disabled={subscriptionBusy || (!profile.adFree && !priceReady)}
             onPress={onSubscriptionPress}
           />
           <ChunkyButton testID="settings-restore-purchases-button" label={subscriptionBusy ? t("sub.busy") : t("sub.restore")} icon="refresh" disabled={subscriptionBusy} onPress={restoreSubscription} />
@@ -483,7 +504,7 @@ export default function SettingsScreen() {
           {confirmDelete ? <ChunkyButton testID="settings-delete-cancel" label={t("common.cancel")} variant="neutral" onPress={() => setConfirmDelete(false)} /> : null}
           {!online ? (
             <Pressable onPress={() => router.push("/delete-account")}>
-              <Text style={styles.help}>{t("account.needOnline")} ›</Text>
+              <Text style={styles.help}>{profile.account === "legacy" ? t("account.deleteLegacy") : t("account.deleteOffline")} ›</Text>
             </Pressable>
           ) : null}
         </View>

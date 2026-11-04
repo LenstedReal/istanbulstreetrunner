@@ -186,7 +186,7 @@ const SESSION_MAX_AGE_MS = 2.5 * 60 * 60 * 1000;
 const AD_FREE_GRACE_MS = 3 * 24 * 60 * 60 * 1000;
 export const APP_VERSION = Constants.expoConfig?.version ?? "2.0.0";
 
-const randomNickname = () => `Kosucu${Math.floor(1000 + Math.random() * 9000)}`;
+const randomNickname = () => `Koşucu${Math.floor(1000 + Math.random() * 9000)}`;
 
 const ProfileContext = createContext<ProfileApi | null>(null);
 

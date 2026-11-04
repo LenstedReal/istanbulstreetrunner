@@ -19,7 +19,14 @@ export interface PostParams {
   vignette: number;
 }
 
+// Every post shader carries this marker so a compile error can be traced to the pipeline.
+export const POST_SHADER_MARK = "ist-post";
+
+// Helper names start with "ist" because three.js adds its own GLSL (for example
+// RRTAndODTFit for ACES) in front of a ShaderMaterial; a second function with the
+// same name does not compile and leaves only the clear colour on screen.
 const FULLSCREEN_VERT = /* glsl */ `
+// ist-post
 varying vec2 vUv;
 void main() {
   vUv = uv;
@@ -28,6 +35,7 @@ void main() {
 `;
 
 const BRIGHT_FRAG = /* glsl */ `
+// ist-post
 uniform sampler2D tScene;
 uniform vec2 texel;
 uniform float threshold;
@@ -46,6 +54,7 @@ void main() {
 `;
 
 const BLUR_FRAG = /* glsl */ `
+// ist-post
 uniform sampler2D tInput;
 uniform vec2 dir;
 varying vec2 vUv;
@@ -63,6 +72,7 @@ void main() {
 `;
 
 const FINAL_FRAG = /* glsl */ `
+// ist-post
 uniform sampler2D tScene;
 uniform sampler2D tBloom;
 uniform float bloomStrength;
@@ -77,30 +87,30 @@ uniform vec3 flashColor;
 uniform float grade;
 varying vec2 vUv;
 
-vec3 RRTAndODTFit(vec3 v) {
+vec3 istRrtOdtFit(vec3 v) {
   vec3 a = v * (v + 0.0245786) - 0.000090537;
   vec3 b = v * (0.983729 * v + 0.4329510) + 0.238081;
   return a / b;
 }
-vec3 aces(vec3 color) {
+vec3 istAces(vec3 color) {
   const mat3 inM = mat3(vec3(0.59719, 0.07600, 0.02840), vec3(0.35458, 0.90834, 0.13383), vec3(0.04823, 0.01566, 0.83777));
   const mat3 outM = mat3(vec3(1.60475, -0.10208, -0.00327), vec3(-0.53108, 1.10813, -0.07276), vec3(-0.07367, -0.00605, 1.07602));
   color *= exposure / 0.6;
   color = inM * color;
-  color = RRTAndODTFit(color);
+  color = istRrtOdtFit(color);
   color = outM * color;
   return clamp(color, 0.0, 1.0);
 }
-vec3 toSRGB(vec3 c) {
+vec3 istToSRGB(vec3 c) {
   return mix(c * 12.92, 1.055 * pow(c, vec3(1.0 / 2.4)) - 0.055, step(vec3(0.0031308), c));
 }
-float hash(vec2 p) {
+float istHash(vec2 p) {
   return fract(sin(dot(p, vec2(12.9898, 78.233))) * 43758.5453);
 }
 void main() {
   vec3 c = texture2D(tScene, vUv).rgb;
   if (bloomStrength > 0.0) c += texture2D(tBloom, vUv).rgb * bloomStrength;
-  c = aces(c);
+  c = istAces(c);
   if (grade > 0.5) {
     float l = dot(c, vec3(0.2126, 0.7152, 0.0722));
     c = mix(vec3(l), c, saturation);
@@ -109,8 +119,8 @@ void main() {
     c *= 1.0 - vignette * dot(d, d) * 1.6;
   }
   c = clamp(c, 0.0, 1.0);
-  c = toSRGB(c);
-  if (grain > 0.0) c += (hash(vUv * 731.0 + time) - 0.5) * grain;
+  c = istToSRGB(c);
+  if (grain > 0.0) c += (istHash(vUv * 731.0 + time) - 0.5) * grain;
   c = mix(c, flashColor, flash);
   gl_FragColor = vec4(c, 1.0);
 }
@@ -166,6 +176,7 @@ export class RenderPipeline {
         uniforms: { tScene: { value: null }, texel: { value: new THREE.Vector2(1 / width, 1 / height) }, threshold: { value: 0.85 } },
         depthTest: false,
         depthWrite: false,
+        toneMapped: false,
       });
       this.blurMat = new THREE.ShaderMaterial({
         vertexShader: FULLSCREEN_VERT,
@@ -173,6 +184,7 @@ export class RenderPipeline {
         uniforms: { tInput: { value: null }, dir: { value: new THREE.Vector2() } },
         depthTest: false,
         depthWrite: false,
+        toneMapped: false,
       });
     }
 
@@ -195,6 +207,7 @@ export class RenderPipeline {
       },
       depthTest: false,
       depthWrite: false,
+      toneMapped: false,
     });
     this.quad = new THREE.Mesh(new THREE.PlaneGeometry(2, 2), this.finalMat);
     this.quad.frustumCulled = false;
@@ -303,16 +316,33 @@ export function probeCaps(gl: WebGL2RenderingContext | WebGLRenderingContext): D
 }
 
 /**
- * Reads one pixel from the middle of the screen after a frame was drawn. A black
- * or transparent pixel means the pipeline did not reach the screen (the sky and
- * street are never pure black). Returns null when reading is not supported.
+ * Reads two pixels (street near the bottom, street further away) after a frame was
+ * drawn. If both are black or exactly the clear colour, the final pass did not reach
+ * the screen: a lit, tone-mapped street never matches the raw clear colour.
+ * Returns null when reading is not supported.
  */
-export function centerPixelLooksDrawn(gl: WebGL2RenderingContext | WebGLRenderingContext, w: number, h: number): boolean | null {
+export function centerPixelLooksDrawn(
+  gl: WebGL2RenderingContext | WebGLRenderingContext,
+  w: number,
+  h: number,
+  clear?: { r: number; g: number; b: number },
+): boolean | null {
   try {
-    const px = new Uint8Array(4);
-    gl.readPixels(Math.floor(w / 2), Math.floor(h * 0.6), 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, px);
+    const sample = (y: number) => {
+      const px = new Uint8Array(4);
+      gl.readPixels(Math.floor(w / 2), Math.floor(y), 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, px);
+      return px;
+    };
+    // Bottom middle is street and runner, the middle is the street further away.
+    const low = sample(h * 0.12);
+    const mid = sample(h * 0.6);
     if (gl.getError() !== gl.NO_ERROR) return null;
-    return px[0] + px[1] + px[2] > 12;
+    const black = (p: Uint8Array) => p[0] + p[1] + p[2] <= 12;
+    const isClear = (p: Uint8Array) =>
+      !!clear && Math.abs(p[0] - clear.r) <= 10 && Math.abs(p[1] - clear.g) <= 10 && Math.abs(p[2] - clear.b) <= 10;
+    // Nothing but the clear colour (or black) on both rows means the final pass never reached the screen.
+    if ((black(low) || isClear(low)) && (black(mid) || isClear(mid))) return false;
+    return true;
   } catch {
     return null;
   }

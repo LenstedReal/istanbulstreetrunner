@@ -198,3 +198,19 @@ Bu ortamda **çalıştırılan** testler:
 - `:app:packageRelease` adımı 26 dakikalık derlemenin sonunda çöktü. Derleme adımları 1.0.3 ile aynı olduğundan neden büyük olasılıkla bellek ya da disk sınırı.
 - Gradle belleği 2 GB → 6 GB (Kotlin 2 GB), yalnızca ARM mimarileri (`armeabi-v7a`, `arm64-v8a`; tüm gerçek telefonlar). x86 yalnızca emülatörler ve birkaç Intel Chromebook içindir. Derleme süresi ve disk kullanımı yaklaşık yarıya iner.
 - Derleme başında runner'da kullanılmayan araçlar silinerek disk açılır; hata olursa "Show the cause of a failed Gradle build" adımı nedeni, disk ve bellek durumunu yazar, `gradle-logs` olarak indirilebilir.
+
+
+## 12. APK testindeki hatalar (ek commit)
+
+- **Boş mavi ekran (3D sahne yok) — asıl hata, düzeltildi.** Son geçiş shader'ı `RRTAndODTFit` adında bir fonksiyon tanımlıyordu; three.js ekrana çizilen her ShaderMaterial'in önüne kendi ACES kodunu (aynı adla) ekler. GPU "function already has a body" diyip shader'ı derlemeyince ekranda yalnızca temizleme rengi kalıyordu. Kendi kendini test eden adım da "açık renk var" diye aldanıyordu.
+  - Shader fonksiyonları `ist…` ile yeniden adlandırıldı; üç post materyali `toneMapped: false` ile oluşturuluyor (three artık hiçbir şey eklemiyor).
+  - `renderer.debug.onShaderError` bağlandı: post shader'ı derlenemezse motor anında doğrudan çizime düşer.
+  - Kendi kendine test artık iki pikseli (yakın sokak, uzak sokak) temizleme rengiyle karşılaştırır.
+  - Doğrulama: eski ve yeni shader'lar Chromium WebGL2'de three.js'in gerçek ön ekiyle derlendi — eski: HATA, yeni: derlendi ve piksel üretti. `tests/shaders.test.ts` bu hatanın geri gelmesini engeller.
+- **"Görevler için internet gerekli"** (sunucu eski sürümdeyken) → artık durum anlatılıyor: "Günlük görevler sunucu güncellemesi yayına girince açılacak; koşular, skorlar, sıralama ve arkadaşlar çalışıyor." Gerçek çevrimdışıysa "Tekrar dene" düğmesi.
+- **Hesap kartı**: "Sunucu güncellemesi bekleniyor" + açıklama; taşıma kodu ve hesap silme satırlarında doğru metin (internet yok ≠ sunucu eski).
+- **Abonelik fiyatı sonsuza kadar "yükleniyor"** → 15 sn sonra ya da Play teklifi yoksa "Aylık üyelik / Abone ol" + "Google Play'den yüklenince satın alınabilir" açıklaması. Fiyat yalnızca Play'den yüklenen kurulumda gelir (RevenueCat → Google Play ürünü); sideload APK'da gelmez, bu normaldir.
+- Menü ve giriş başlığında "İ" noktasının kesilmesi: satır yüksekliği ve üst boşluk artırıldı.
+- Varsayılan takma ad "Koşucu####".
+- **Veri tabanı**: MongoDB çalışıyor (dünya sıralaması ve hesap kaydı Render'daki sunucudan geliyor). Görevler/taşıma kodu/hesap silme çalışmıyordu çünkü Render hâlâ `main` dalındaki 1.0.x sunucusunu çalıştırıyor; `v2` `main`'e birleşince Render 2.0 sunucusunu kurar ve bunlar açılır. Render ortam değişkenleri (`MONGO_URL`, `DB_NAME`) aynı; GitHub tarafında bir şey gerekmez.
+- Geri alma: `git revert <bu commit>`.

@@ -30,7 +30,7 @@ import { OBSTACLE_DEFS, ObjectFactory, type ObstacleDef, type ObstacleKind, type
 import { levelTuning, planRow, type Lane } from "./patterns";
 import { internalSize, type DeviceCaps, type QualityProfile, PROFILES } from "./quality/profiles";
 import { FpsMeter, initialScale, updateScale, type ScaleState } from "./quality/scale";
-import { centerPixelLooksDrawn, probeCaps, RenderPipeline, type PostParams } from "./render/pipeline";
+import { centerPixelLooksDrawn, POST_SHADER_MARK, probeCaps, RenderPipeline, type PostParams } from "./render/pipeline";
 import { createRng, randomSeed, type Rng } from "./rng";
 import { DEFAULT_LOOK, Runner } from "./runner";
 import { plan as planSteps, skipFrame, STEP } from "./timestep";
@@ -186,6 +186,8 @@ export class RunnerEngine {
   private selfTestFrames = 0;
   private screenW = 1;
   private screenH = 1;
+  /** A shader failed to compile (reported by three.js); the post pipeline is dropped. */
+  private shaderFailed = false;
 
   // Run state
   private rng: Rng = createRng(randomSeed());
@@ -384,6 +386,19 @@ export class RunnerEngine {
       g.WebGLRenderingContext = savedCtor;
     }
 
+    // A shader that does not compile would leave only the clear colour on screen;
+    // note it so draw() falls back to rendering the scene directly.
+    renderer.debug.onShaderError = (glc: WebGLRenderingContext, _program: WebGLProgram, vs: WebGLShader, fs: WebGLShader) => {
+      let post = true;
+      try {
+        const source = (glc.getShaderSource(vs) || "") + (glc.getShaderSource(fs) || "");
+        post = source.includes(POST_SHADER_MARK);
+        console.warn("[gfx] shader error", post ? "(post)" : "(scene)", glc.getShaderInfoLog(vs) || "", glc.getShaderInfoLog(fs) || "");
+      } catch {
+        /* ignore */
+      }
+      if (post) this.shaderFailed = true;
+    };
     renderer.setPixelRatio(1);
     renderer.setSize(w, h, false);
     renderer.setClearColor(DISTRICTS[this.district ?? "istiklal"].haze);
@@ -422,11 +437,15 @@ export class RunnerEngine {
   }
 
   private draw() {
+    if (this.pipeline && this.shaderFailed) {
+      this.fallBackToDirect();
+    }
     if (this.pipeline) {
       this.post.flash = this.flash;
       this.post.flashColor.copy(this.flashColor);
       try {
         this.pipeline.render(this.scene, this.camera, this.post, this.clock);
+        if (this.shaderFailed) throw new Error("post shader did not compile");
       } catch (error) {
         console.warn("[gfx] pipeline render failed", error);
         this.fallBackToDirect();
@@ -437,7 +456,10 @@ export class RunnerEngine {
       if (this.selfTestFrames < 3) {
         this.selfTestFrames++;
         if (this.selfTestFrames === 3) {
-          const ok = centerPixelLooksDrawn(this.gl as unknown as WebGL2RenderingContext, this.screenW, this.screenH);
+          // The screen is cleared with the haze colour in sRGB, which is its hex value.
+          const hex = DISTRICTS[this.district].haze;
+          const clear = { r: (hex >> 16) & 255, g: (hex >> 8) & 255, b: hex & 255 };
+          const ok = centerPixelLooksDrawn(this.gl as unknown as WebGL2RenderingContext, this.screenW, this.screenH, clear);
           if (ok === false) {
             this.fallBackToDirect();
             this.renderer.render(this.scene, this.camera);
