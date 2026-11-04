@@ -12,7 +12,7 @@ from typing import Any
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel, Field
 
-from . import security, services
+from . import moderation, security, services
 from .deps import client_ip, get_db, limit
 
 router = APIRouter(prefix="/api/v2/admin")
@@ -83,18 +83,10 @@ async def list_players(request: Request, limit_n: int = 200):
     return PlayersOut(total=await db.players.count_documents({}), players=rows)
 
 
-@router.post("/reset-world", response_model=ResetOut)
-async def reset_world(body: ResetIn, request: Request):
-    """Archive and delete every player except the given friend codes (test accounts, stale names)."""
-    _require_admin(request)
-    db = get_db(request)
-    keep = {c.strip().upper() for c in body.keep if c.strip()}
-    victims = [d for d in await db.players.find({}).to_list(None) if (d.get("friend_code") or "").upper() not in keep]
-    out = ResetOut(dry_run=body.dry_run, kept=sorted(keep), deleted=len(victims), freed_nicknames=sorted({d.get("nickname", "") for d in victims if d.get("nickname")}))
-    if body.dry_run or not victims:
-        return out
+async def _archive_and_delete(db, victims: list[dict], kind: str, request: Request) -> str:
+    """Copy the players and everything linked to them into `archive`, then delete them."""
     ids = [str(d["_id"]) for d in victims]
-    archive: dict[str, Any] = {"kind": "reset-world", "at": datetime.now(timezone.utc), "players": victims, "linked": {}}
+    archive: dict[str, Any] = {"kind": kind, "at": datetime.now(timezone.utc), "players": victims, "linked": {}}
     for coll in PLAYER_LINKED:
         query = {"$or": [{"player_id": {"$in": ids}}, {"friend_id": {"$in": ids}}, {"blocked_id": {"$in": ids}}, {"target_id": {"$in": ids}}, {"reporter_id": {"$in": ids}}]}
         archive["linked"][coll] = await db[coll].find(query).to_list(None)
@@ -103,8 +95,55 @@ async def reset_world(body: ResetIn, request: Request):
         if docs:
             await db[coll].delete_many({"_id": {"$in": [d["_id"] for d in docs]}})
     await db.players.delete_many({"_id": {"$in": [d["_id"] for d in victims]}})
-    await services.audit(db, "admin_reset", deleted=len(victims), archive=str(res.inserted_id), ip=security.anonymize(client_ip(request)))
-    out.archive_id = str(res.inserted_id)
+    await services.audit(db, "admin_" + kind, deleted=len(victims), archive=str(res.inserted_id), ip=security.anonymize(client_ip(request)))
+    return str(res.inserted_id)
+
+
+@router.post("/reset-world", response_model=ResetOut)
+async def reset_world(body: ResetIn, request: Request):
+    """Archive and delete EVERY player except the given friend codes. Pre-release clean-up only."""
+    _require_admin(request)
+    db = get_db(request)
+    keep = {c.strip().upper() for c in body.keep if c.strip()}
+    victims = [d for d in await db.players.find({}).to_list(None) if (d.get("friend_code") or "").upper() not in keep]
+    out = ResetOut(dry_run=body.dry_run, kept=sorted(keep), deleted=len(victims), freed_nicknames=sorted({d.get("nickname", "") for d in victims if d.get("nickname")}))
+    if body.dry_run or not victims:
+        return out
+    out.archive_id = await _archive_and_delete(db, victims, "reset-world", request)
+    return out
+
+
+class DeleteIn(BaseModel):
+    """Only the named accounts are archived and deleted: by nickname (every account whose
+    name folds to it: case, Turkish letters, spacing) and/or by friend code. Everyone else is untouched."""
+
+    nicknames: list[str] = Field(default_factory=list, max_length=200)
+    friend_codes: list[str] = Field(default_factory=list, max_length=200)
+    dry_run: bool = True
+
+
+class DeleteOut(BaseModel):
+    dry_run: bool
+    deleted: int
+    players: list[PlayerRow]
+    archive_id: str | None = None
+
+
+@router.post("/delete-players", response_model=DeleteOut)
+async def delete_players(body: DeleteIn, request: Request):
+    _require_admin(request)
+    db = get_db(request)
+    names = {moderation.nickname_key(n) for n in body.nicknames if n.strip()} - {""}
+    codes = {c.strip().upper() for c in body.friend_codes if c.strip()}
+    victims = [
+        d
+        for d in await db.players.find({}).to_list(None)
+        if moderation.nickname_key(d.get("nickname") or "") in names or (d.get("friend_code") or "").upper() in codes
+    ]
+    out = DeleteOut(dry_run=body.dry_run, deleted=len(victims), players=[_row(d) for d in victims])
+    if body.dry_run or not victims:
+        return out
+    out.archive_id = await _archive_and_delete(db, victims, "delete-players", request)
     return out
 
 

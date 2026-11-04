@@ -237,6 +237,13 @@ def test_reserved_nickname_and_admin_reset(make_client):
         assert admin.get("/api/v2/admin/players", headers={"X-Admin-Secret": "wrong"}).status_code == 401
         head = {"X-Admin-Secret": secret}
         assert admin.get("/api/v2/admin/players", headers=head).json()["total"] == 2
+        gone_token, _ = v2_player(admin, "Eski Test")
+        d = admin.post("/api/v2/admin/delete-players", json={"nicknames": ["ESKİ TEST"], "dry_run": True}, headers=head).json()
+        assert d["deleted"] == 1 and d["players"][0]["nickname"] == "Eski Test" and d["archive_id"] is None
+        d = admin.post("/api/v2/admin/delete-players", json={"nicknames": ["eski test"], "dry_run": False}, headers=head).json()
+        assert d["deleted"] == 1 and d["archive_id"]
+        assert admin.get("/api/v2/me", headers=auth(gone_token)).status_code == 401
+        assert admin.get("/api/v2/admin/players", headers=head).json()["total"] == 2
         dry = admin.post("/api/v2/admin/reset-world", json={"keep": [owner["friend_code"].lower()], "dry_run": True}, headers=head).json()
         assert dry["deleted"] == 1 and dry["freed_nicknames"] == ["Test Hesabı"] and dry["archive_id"] is None
         assert admin.get("/api/v2/admin/players", headers=head).json()["total"] == 2

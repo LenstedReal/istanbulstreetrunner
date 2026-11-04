@@ -233,7 +233,8 @@ Bu ortamda **çalıştırılan** testler:
 - **Dünya oyuncularını yenileme**: `ADMIN_SECRET` tanımlanınca `/api/v2/admin` açılır (`X-Admin-Secret` başlığı, dakikada 30 istek, yanlış gizli anahtar 401, tanımsızken 404 — oyun istemcisi bu yolu hiç kullanmaz).
   - `GET /api/v2/admin/players` — oyuncu listesi (ad, arkadaş kodu, skor).
   - `POST /api/v2/admin/reset-world {"keep":["KOD1"],"dry_run":true}` — tutulacak arkadaş kodları dışındaki **tüm** hesapları önce `archive` koleksiyonuna kopyalar (oyuncu + arkadaşlık, koşu, kayıt, görev, oturum… hepsi), sonra siler ve adlarını serbest bırakır. `dry_run:true` yalnızca ne olacağını gösterir.
-  - `POST /api/v2/admin/restore-world {"archive_id":"…"}` — sıfırlamayı geri alır.
+  - `POST /api/v2/admin/delete-players {"nicknames":["LenstedReal"],"friend_codes":[],"dry_run":true}` — **yalnızca** adı geçen hesapları (büyük/küçük harf ve Türkçe harf farkı sayılmaz) ya da arkadaş kodlarını yedekleyip siler; diğer oyunculara dokunmaz. Üretimde kullanılacak olan budur.
+  - `POST /api/v2/admin/restore-world {"archive_id":"…"}` — iki silme türünü de geri alır.
   - Kullanım koşullarına "test dönemi hesapları yedeklenerek sıfırlanabilir" satırı eklendi.
 - Testler: `test_reserved_nickname_and_admin_reset` (gerçek Mongo, CI), birim testleri, çevrimdışı senaryo `admin_suite`.
 - Geri alma: `git revert <bu commit>`; env değişkenleri tanımsızken davranış öncekiyle aynı.
