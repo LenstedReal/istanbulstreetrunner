@@ -16,6 +16,7 @@ from .db import ensure_indexes
 from .deps import client_ip
 from .ratelimit import RateLimiter
 from .routes_legacy import router as legacy_router
+from .routes_admin import router as admin_router
 from .routes_v2 import router as v2_router
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s %(message)s")
@@ -89,6 +90,7 @@ def create_app(settings: Optional[Settings] = None) -> FastAPI:
 
     app.include_router(legacy_router)
     app.include_router(v2_router)
+    app.include_router(admin_router)
     app.add_middleware(
         CORSMiddleware,
         allow_origins=list(settings.allowed_origins),

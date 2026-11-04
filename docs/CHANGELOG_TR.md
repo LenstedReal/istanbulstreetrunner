@@ -225,3 +225,15 @@ Bu ortamda **çalıştırılan** testler:
 - Kullanılmayan eski metinler kaldırıldı (vapur jetonu ile semt açma: artık semtler hedefle açılıyor).
 - Testler: `test_nickname_is_unique` (API), `test_nickname_key_folds_spelling_families` (birim), çevrimdışı senaryo koşucusu 409 kontrolleri.
 - Geri alma: `git revert <bu commit>`; indeks sparse olduğundan eski sunucu da aynı veriyle çalışır.
+
+
+## 14. Geliştirici adı, dünya sıralamasını sıfırlama (ek commit)
+
+- **Adını geri alamamanın nedeni**: küfür/taklit filtresi "lensted" ve "lenstedreal" adlarını herkese kapatıyor; hesabını silip yeniden açınca kendi adın da sana kapalı kaldı. Çözüm, cihaz kimliği ya da oturum kimliği değil: zaten sende olan **arkadaş kodu**. Render'da `RESERVED_NICKNAMES=LenstedReal=ARKADAŞKODUN` tanımlanınca "LenstedReal" ve onunla başlayan her ad (LenstedReal2, lenstedreal tr…) herkese kapalı, yalnızca o arkadaş koduna açık olur. Yeni veri toplanmadığı için gizlilik metnine ek gerekmez; kullanım koşullarına "geliştirici adı ayrılmıştır" satırı eklendi.
+- **Dünya oyuncularını yenileme**: `ADMIN_SECRET` tanımlanınca `/api/v2/admin` açılır (`X-Admin-Secret` başlığı, dakikada 30 istek, yanlış gizli anahtar 401, tanımsızken 404 — oyun istemcisi bu yolu hiç kullanmaz).
+  - `GET /api/v2/admin/players` — oyuncu listesi (ad, arkadaş kodu, skor).
+  - `POST /api/v2/admin/reset-world {"keep":["KOD1"],"dry_run":true}` — tutulacak arkadaş kodları dışındaki **tüm** hesapları önce `archive` koleksiyonuna kopyalar (oyuncu + arkadaşlık, koşu, kayıt, görev, oturum… hepsi), sonra siler ve adlarını serbest bırakır. `dry_run:true` yalnızca ne olacağını gösterir.
+  - `POST /api/v2/admin/restore-world {"archive_id":"…"}` — sıfırlamayı geri alır.
+  - Kullanım koşullarına "test dönemi hesapları yedeklenerek sıfırlanabilir" satırı eklendi.
+- Testler: `test_reserved_nickname_and_admin_reset` (gerçek Mongo, CI), birim testleri, çevrimdışı senaryo `admin_suite`.
+- Geri alma: `git revert <bu commit>`; env değişkenleri tanımsızken davranış öncekiyle aynı.

@@ -224,7 +224,8 @@
     {
      "h": "3. Takma adlar ve davranış",
      "p": [
-      "Takma adın küfür, hakaret, nefret söylemi, başkasının kimliğini taklit veya kişisel bilgi içeremez. Uygunsuz adlar değiştirilebilir. Oyuncuları engelleyebilir ve takma adlarını şikâyet edebilirsin."
+      "Takma adın küfür, hakaret, nefret söylemi, başkasının kimliğini taklit veya kişisel bilgi içeremez. Uygunsuz adlar değiştirilebilir. Oyuncuları engelleyebilir ve takma adlarını şikâyet edebilirsin.",
+      "Takma adlar tektir: başka bir oyuncunun kullandığı ad (büyük/küçük harf veya benzer yazım farkıyla da olsa) alınamaz. Geliştiricinin adı (LenstedReal) ve yönetici/moderatör gibi resmî izlenimi veren adlar oyunculara kapalıdır; geliştirici kendi adını kullanabilir."
      ]
     },
     {
@@ -242,7 +243,8 @@
     {
      "h": "6. Hizmetin sürekliliği",
      "p": [
-      "Çevrimiçi özellikler bakım veya arıza nedeniyle geçici olarak kullanılamayabilir. Oyunun özellikleri zamanla değişebilir."
+      "Çevrimiçi özellikler bakım veya arıza nedeniyle geçici olarak kullanılamayabilir. Oyunun özellikleri zamanla değişebilir.",
+      "Yayın öncesi test döneminden kalan hesaplar ve sıralama, geliştirici tarafından sıfırlanabilir; sıfırlamadan önce veriler yedeklenir ve geri yüklenebilir. Yayından sonra gerçek oyuncu hesapları ancak bu koşullara aykırılık (hile, uygunsuz ad) hâlinde silinir."
      ]
     },
     {
@@ -278,7 +280,8 @@
     {
      "h": "3. Nicknames and behaviour",
      "p": [
-      "Nicknames must not contain swearing, insults, hate speech, impersonation or personal data. Inappropriate names may be changed. You can block players and report their nicknames."
+      "Nicknames must not contain swearing, insults, hate speech, impersonation or personal data. Inappropriate names may be changed. You can block players and report their nicknames.",
+      "Nicknames are unique: a name another player uses (even with a different case or a look-alike spelling) cannot be taken. The developer's name (LenstedReal) and names that suggest an official role such as admin or moderator are not available to players; the developer may use their own name."
      ]
     },
     {
@@ -296,7 +299,8 @@
     {
      "h": "6. Availability",
      "p": [
-      "Online features may be temporarily unavailable because of maintenance or outages. Game features may change over time."
+      "Online features may be temporarily unavailable because of maintenance or outages. Game features may change over time.",
+      "Accounts and rankings left over from the pre-release test period may be reset by the developer; the data is backed up before a reset and can be restored. After release, real player accounts are deleted only for a breach of these terms (cheating, an inappropriate name)."
      ]
     },
     {

@@ -205,3 +205,54 @@ def test_rate_limit(make_client):
     limited = make_client(rate_limit=True)
     codes = [limited.post("/api/v2/players", json={"nickname": f"Oyuncu {i}"}).status_code for i in range(6)]
     assert codes[:5] == [200] * 5 and codes[5] == 429
+
+
+def test_reserved_nickname_and_admin_reset(make_client):
+    import uuid
+
+    from app.config import Settings, _reserved
+    from app.main import create_app
+    from fastapi.testclient import TestClient
+
+    secret = "test-admin-secret-" + uuid.uuid4().hex
+    owner_token, owner = v2_player_on(make_client, "Sahip")
+    # Build a second app on the same database with reserved names and the admin secret.
+    client = make_client.last
+    settings = Settings(
+        mongo_url=client.app.state.settings.mongo_url,
+        db_name=client.app.state.settings.db_name,
+        allowed_origins=(),
+        rate_limit_enabled=False,
+        presence_enabled=False,
+        admin_secret=secret,
+        reserved_nicknames=_reserved(f"LenstedReal={owner['friend_code']}"),
+    )
+    with TestClient(create_app(settings)) as admin:
+        assert admin.post("/api/v2/players", json={"nickname": "LenstedReal"}).status_code == 422
+        assert admin.post("/api/v2/players", json={"nickname": "LENSTEDREAL Pro"}).status_code == 422
+        r = admin.patch("/api/v2/me", json={"nickname": "LenstedReal"}, headers=auth(owner_token))
+        assert r.status_code == 200 and r.json()["nickname"] == "LenstedReal"
+        other_token, _ = v2_player(admin, "Test Hesabı")
+        assert admin.get("/api/v2/admin/players").status_code == 401
+        assert admin.get("/api/v2/admin/players", headers={"X-Admin-Secret": "wrong"}).status_code == 401
+        head = {"X-Admin-Secret": secret}
+        assert admin.get("/api/v2/admin/players", headers=head).json()["total"] == 2
+        dry = admin.post("/api/v2/admin/reset-world", json={"keep": [owner["friend_code"].lower()], "dry_run": True}, headers=head).json()
+        assert dry["deleted"] == 1 and dry["freed_nicknames"] == ["Test Hesabı"] and dry["archive_id"] is None
+        assert admin.get("/api/v2/admin/players", headers=head).json()["total"] == 2
+        done = admin.post("/api/v2/admin/reset-world", json={"keep": [owner["friend_code"]], "dry_run": False}, headers=head).json()
+        assert done["deleted"] == 1 and done["archive_id"]
+        assert admin.get("/api/v2/admin/players", headers=head).json()["total"] == 1
+        assert admin.get("/api/v2/me", headers=auth(other_token)).status_code == 401
+        assert admin.get("/api/v2/me", headers=auth(owner_token)).status_code == 200
+        res = admin.post("/api/v2/admin/restore-world", json={"archive_id": done["archive_id"]}, headers=head).json()
+        assert res["restored_players"] == 1
+        assert admin.get("/api/v2/me", headers=auth(other_token)).status_code == 200
+    # Admin routes do not exist without the secret.
+    assert client.get("/api/v2/admin/players", headers={"X-Admin-Secret": secret}).status_code == 404
+
+
+def v2_player_on(make_client, nick):
+    client = make_client()
+    make_client.last = client
+    return v2_player(client, nick)

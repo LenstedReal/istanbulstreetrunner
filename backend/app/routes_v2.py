@@ -37,10 +37,16 @@ router = APIRouter(prefix="/api/v2")
 WELCOME_KEYS = 50
 
 
-def _nickname(raw: str) -> str:
+def _nickname(raw: str, request: Request | None = None, doc: dict | None = None) -> str:
     check = moderation.check_nickname(raw)
-    if not check.ok:
+    reserved = request.app.state.settings.reserved_nicknames if request is not None else ()
+    code = (doc or {}).get("friend_code")
+    owner = services.nickname_owner(reserved, check.value, code)
+    # The configured owner may use a name the built-in list reserves (for example the developer's name).
+    if not check.ok and not (check.code == "reserved" and owner):
         raise HTTPException(422, check.message)
+    if request is not None and not owner and services.nickname_reserved(reserved, check.value, code):
+        raise HTTPException(422, services.NICKNAME_RESERVED)
     return check.value
 
 
@@ -62,7 +68,7 @@ async def meta(request: Request):
 async def create_player(body: NicknameIn, request: Request):
     limit(request, "create_player", client_ip(request))
     db = get_db(request)
-    doc = await services.create_player(db, _nickname(body.nickname), claimed=True)
+    doc = await services.create_player(db, _nickname(body.nickname, request), claimed=True)
     token = await services.issue_token(db, str(doc["_id"]), "create")
     return AuthOut(token=token, player=services.me_out(doc))
 
@@ -102,7 +108,7 @@ async def rename(body: NicknameIn, request: Request):
     doc = await require_player(request)
     limit(request, "nickname", str(doc["_id"]))
     db = get_db(request)
-    await services.set_nickname(db, doc, _nickname(body.nickname))
+    await services.set_nickname(db, doc, _nickname(body.nickname, request, doc))
     return services.me_out(doc, rank=await services.rank_of(db, doc))
 
 

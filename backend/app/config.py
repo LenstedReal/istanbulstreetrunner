@@ -22,6 +22,22 @@ class Settings:
     rate_limit_enabled: bool = True
     presence_enabled: bool = True
     revenuecat_secret: str | None = None
+    # Long random value; enables the /api/v2/admin routes (header X-Admin-Secret). Empty = disabled.
+    admin_secret: str | None = None
+    # "Nick=FRIENDCODE,Other=CODE2": a nickname (and every name starting with it) only that
+    # friend code may use. Empty = no reserved names besides the built-in ones.
+    reserved_nicknames: tuple[tuple[str, str], ...] = ()
+
+
+def _reserved(raw: str) -> tuple[tuple[str, str], ...]:
+    out = []
+    for item in raw.split(","):
+        if not item.strip():
+            continue
+        name, _, code = item.partition("=")
+        if name.strip():
+            out.append((name.strip(), code.strip().upper()))
+    return tuple(out)
 
 
 def load_settings() -> Settings:
@@ -33,4 +49,6 @@ def load_settings() -> Settings:
         rate_limit_enabled=_flag("RATE_LIMIT_ENABLED", True),
         presence_enabled=_flag("PRESENCE_ENABLED", True),
         revenuecat_secret=(os.environ.get("REVENUECAT_SECRET_KEY") or "").strip() or None,
+        admin_secret=(os.environ.get("ADMIN_SECRET") or "").strip() or None,
+        reserved_nicknames=_reserved(os.environ.get("RESERVED_NICKNAMES") or ""),
     )

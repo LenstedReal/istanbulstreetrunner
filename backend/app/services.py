@@ -139,6 +139,11 @@ NICKNAME_TAKEN = "Bu takma ad alınmış, başka bir ad seç"
 
 
 # ----------------------------------------------------------------- players
+NICKNAME_RESERVED = moderation.NICKNAME_RESERVED
+nickname_owner = moderation.nickname_owner
+nickname_reserved = moderation.nickname_reserved
+
+
 async def nickname_taken(db, nickname: str, *, except_id=None) -> bool:
     """Is this nickname (or a look-alike) owned by another player?"""
     key = moderation.nickname_key(nickname)

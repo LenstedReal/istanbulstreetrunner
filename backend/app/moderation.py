@@ -116,3 +116,28 @@ def check_nickname(raw: str) -> NicknameCheck:
         if stem in loose or stem in joined or (_squeeze(stem, 1) == stem and stem in tight):
             return NicknameCheck(False, value, "blocked")
     return NicknameCheck(True, value)
+
+
+NICKNAME_RESERVED = "Bu takma ad ayrılmış, başka bir ad seç"
+
+
+def nickname_owner(reserved: tuple[tuple[str, str], ...], nickname: str, friend_code: str | None) -> bool:
+    """Does this friend code own a configured reserved name that the nickname starts with?
+    The owner may also use names the built-in moderation list reserves (the developer's own name)."""
+    key = nickname_key(nickname)
+    code_given = (friend_code or "").upper()
+    if not key or not code_given:
+        return False
+    return any(code and code_given == code and key.startswith(nickname_key(name)) for name, code in reserved)
+
+
+def nickname_reserved(reserved: tuple[tuple[str, str], ...], nickname: str, friend_code: str | None) -> bool:
+    """A reserved name, and every name that starts with it, belongs to one friend code."""
+    key = nickname_key(nickname)
+    if not key:
+        return False
+    for name, code in reserved:
+        rkey = nickname_key(name)
+        if rkey and key.startswith(rkey) and (not code or (friend_code or "").upper() != code):
+            return True
+    return False

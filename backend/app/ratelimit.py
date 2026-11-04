@@ -27,6 +27,7 @@ LIMITS: dict[str, tuple[int, float]] = {
     "save": (60, 3600.0),
     "block": (60, 3600.0),
     "mission_claim": (30, 3600.0),
+    "admin": (30, 60.0),
 }
 
 

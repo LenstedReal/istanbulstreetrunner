@@ -15,10 +15,16 @@ from .models import FriendAdd, FriendsOut, PlayerCreate, PlayerOut, PlayerUpdate
 router = APIRouter(prefix="/api")
 
 
-def _nickname(raw: str) -> str:
+def _nickname(raw: str, request: Request | None = None, doc: dict | None = None) -> str:
     check = moderation.check_nickname(raw)
-    if not check.ok:
+    reserved = request.app.state.settings.reserved_nicknames if request is not None else ()
+    code = (doc or {}).get("friend_code")
+    owner = services.nickname_owner(reserved, check.value, code)
+    # The configured owner may use a name the built-in list reserves (for example the developer's name).
+    if not check.ok and not (check.code == "reserved" and owner):
         raise HTTPException(422, check.message)
+    if request is not None and not owner and services.nickname_reserved(reserved, check.value, code):
+        raise HTTPException(422, services.NICKNAME_RESERVED)
     return check.value
 
 
@@ -30,7 +36,7 @@ async def root():
 @router.post("/players", response_model=PlayerOut)
 async def create_player(body: PlayerCreate, request: Request):
     limit(request, "create_player", client_ip(request))
-    doc = await services.create_player(get_db(request), _nickname(body.nickname), claimed=False)
+    doc = await services.create_player(get_db(request), _nickname(body.nickname, request), claimed=False)
     return services.legacy_out(doc, is_me=True, reveal=True)
 
 
@@ -47,7 +53,7 @@ async def get_player(player_id: str, request: Request):
 async def update_player(player_id: str, body: PlayerUpdate, request: Request):
     doc = await legacy_owner(request, player_id)
     limit(request, "nickname", player_id)
-    await services.set_nickname(get_db(request), doc, _nickname(body.nickname))
+    await services.set_nickname(get_db(request), doc, _nickname(body.nickname, request, doc))
     return services.legacy_out(doc, is_me=True, reveal=True)
 
 
