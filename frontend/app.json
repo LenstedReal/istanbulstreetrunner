@@ -2,7 +2,7 @@
   "expo": {
     "name": "Istanbul Street Runner",
     "slug": "frontend",
-    "version": "2.0.0",
+    "version": "2.0.1",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "istanbulrunner",
@@ -21,7 +21,7 @@
         "android.permission.VIBRATE",
         "com.android.vending.BILLING"
       ],
-      "versionCode": 5,
+      "versionCode": 6,
       "blockedPermissions": [
         "android.permission.RECORD_AUDIO",
         "android.permission.SYSTEM_ALERT_WINDOW",

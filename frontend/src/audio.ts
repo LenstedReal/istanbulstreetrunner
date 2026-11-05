@@ -16,20 +16,55 @@ const CROSSFADE_S = 2.2; // seamless loop: next pass fades in before the current
 
 export interface MusicTrack {
   id: string;
-  title: string;
-  artist: string;
+  /** Track name, Turkish and English. */
+  title: { tr: string; en: string };
+  /** Credit line under the name, Turkish and English. */
+  artist: { tr: string; en: string };
   source: number;
 }
 
-/** NoCopyrightSounds releases (ncs.io). Credits are shown in Settings. */
+/**
+ * Original music written for the game by LenstedReal (2.0.1). Every track belongs to the developer; nothing is
+ * licensed from a third party, so there is no attribution requirement beyond the credit shown in Settings.
+ */
 export const MUSIC_TRACKS: MusicTrack[] = [
-  { id: "invincible", title: "Invincible", artist: "DEAF KEV", source: require("../assets/audio/music/invincible.mp3") },
-  { id: "fearless2", title: "Fearless pt. II", artist: "Lost Sky feat. Chris Linton", source: require("../assets/audio/music/fearless2.mp3") },
-  { id: "skyhigh", title: "Sky High", artist: "Elektronomia", source: require("../assets/audio/music/skyhigh.mp3") },
-  { id: "mortals", title: "Mortals", artist: "Warriyo feat. Laura Brehm", source: require("../assets/audio/music/mortals.mp3") },
-  { id: "royalty", title: "Royalty", artist: "Egzod, Maestro Chives & Neoni", source: require("../assets/audio/music/royalty.mp3") },
+  {
+    id: "istiklal_kosusu",
+    title: { tr: "İstiklal Koşusu", en: "Istiklal Run" },
+    artist: { tr: "LenstedReal feat. Kırmızı Tramvay", en: "LenstedReal feat. Red Tram" },
+    source: require("../assets/audio/music/istiklal_kosusu.mp3"),
+  },
+  {
+    id: "galata_ruzgari",
+    title: { tr: "Galata Rüzgârı", en: "Galata Breeze" },
+    artist: { tr: "LenstedReal & Galata Kulesi", en: "LenstedReal & Galata Tower" },
+    source: require("../assets/audio/music/galata_ruzgari.mp3"),
+  },
+  {
+    id: "bogaz_isiklari",
+    title: { tr: "Boğaz Işıkları", en: "Bosphorus Lights" },
+    artist: { tr: "LenstedReal feat. Boğaz Martıları", en: "LenstedReal feat. Bosphorus Gulls" },
+    source: require("../assets/audio/music/bogaz_isiklari.mp3"),
+  },
+  {
+    id: "sirkeci_ekspres",
+    title: { tr: "Sirkeci Ekspres", en: "Sirkeci Express" },
+    artist: { tr: "LenstedReal x Sirkeci Garı", en: "LenstedReal x Sirkeci Station" },
+    source: require("../assets/audio/music/sirkeci_ekspres.mp3"),
+  },
+  {
+    id: "ortakoy_gecesi",
+    title: { tr: "Ortaköy Gecesi", en: "Ortaköy Nights" },
+    artist: { tr: "LenstedReal feat. Ortaköy Simitçisi", en: "LenstedReal feat. Ortaköy Simit Seller" },
+    source: require("../assets/audio/music/ortakoy_gecesi.mp3"),
+  },
 ];
 export const DEFAULT_TRACK = MUSIC_TRACKS[0].id;
+
+/** A saved track id, or the default when the id is unknown (the 2.0.0 tracks are gone). */
+export function knownTrack(id: unknown): string {
+  return typeof id === "string" && MUSIC_TRACKS.some((t) => t.id === id) ? id : DEFAULT_TRACK;
+}
 
 /**
  * Tiny audio manager on top of expo-audio. Coins fire fast, so they rotate
@@ -163,9 +198,10 @@ class AudioManager {
   }
 
   setTrack(id: string) {
-    if (id === this.trackId && this.music) return;
+    const known = knownTrack(id);
+    if (known === this.trackId && this.music) return;
     const wasPlaying = this.wantPlaying;
-    this.loadTrack(id);
+    this.loadTrack(known);
     if (wasPlaying) this.startMusic();
   }
 

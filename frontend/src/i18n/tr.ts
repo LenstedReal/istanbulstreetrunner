@@ -214,7 +214,7 @@ export const tr = {
   "settings.trackAd": "Parça değiştirmek için reklam izle",
   "settings.trackAdIncomplete": "Reklam tamamlanmadı, parça değişmedi",
   "settings.trackFailed": "Parça değiştirilemedi. Tekrar dene.",
-  "settings.musicCredits": "Müzik bilgileri: {credits}",
+  "settings.musicCredits": "Tüm müzikler: LenstedReal",
   "settings.game": "Oyun",
   "settings.haptics": "Titreşim",
   "settings.hapticsHelp": "Şerit değişimi, altın ve çarpışmada",

@@ -205,7 +205,7 @@ export const en: Strings = {
   "settings.trackAd": "Watch an ad to change the track",
   "settings.trackAdIncomplete": "The ad did not finish, the track did not change",
   "settings.trackFailed": "Could not change the track. Try again.",
-  "settings.musicCredits": "Music credits: {credits}",
+  "settings.musicCredits": "All music by LenstedReal",
   "settings.game": "Game",
   "settings.haptics": "Vibration",
   "settings.hapticsHelp": "On lane changes, coins and crashes",

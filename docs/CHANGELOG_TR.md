@@ -144,7 +144,7 @@ Bu ortamda **çalıştırılan** testler:
 
 1. **Render hattı yalnızca cihazda doğrulanabilir.** Expo GL'de render hedefi gölge haritasıyla zaten kullanılıyor, yine de bir sürücü uyumsuzsa öz-test doğrudan çizime döner. Ultra'daki MSAA en riskli kısım (yalnız elle seçilince açılır).
 2. **Sokak parçası yeniden birleştirme** her ~2 saniyede bir yapılır; çok zayıf telefonlarda kısa takılma olabilir. Çok düşük profil detayı azaltır.
-3. **NCS müzikleri**: NCS kuralları oyunlarda ticari kullanım için ayrı lisans istiyor. Lisans alınana kadar Play yayını hukuki risk taşır; alternatif lisanslı müzik veya kendi müziğin önerilir.
+3. ~~**NCS müzikleri**: NCS kuralları oyunlarda ticari kullanım için ayrı lisans istiyor.~~ **2.0.1'de kapandı:** NCS parçaları çıkarıldı, oyunda yalnızca LenstedReal'in özgün müzikleri var (bkz. §15).
 4. **KVKK**: yurt dışına aktarım için standart sözleşmenin imzalanıp 5 iş günü içinde Kurul'a bildirilmesi gerekir (politika metni buna dayanıyor).
 5. **Render ücretsiz plan**: 15 dk sonra uyur, ilk istek ~1 dk sürebilir. Oyun "sunucu uyanıyor" gösterir ve beklemeden oynatır; kalıcı çözüm Starter planı.
 6. **Uçuş, halı ve sendeleme dengesi** cihazda oynanarak ayarlanmalı.
@@ -238,3 +238,30 @@ Bu ortamda **çalıştırılan** testler:
   - Kullanım koşullarına "test dönemi hesapları yedeklenerek sıfırlanabilir" satırı eklendi.
 - Testler: `test_reserved_nickname_and_admin_reset` (gerçek Mongo, CI), birim testleri, çevrimdışı senaryo `admin_suite`.
 - Geri alma: `git revert <bu commit>`; env değişkenleri tanımsızken davranış öncekiyle aynı.
+
+
+## 15. Sürüm 2.0.1 (6): özgün müzikler, NCS tamamen çıktı (ek commit)
+
+| | |
+|---|---|
+| Sürüm | **2.0.1**, versionCode **6** (önceki: 2.0.0 / 5) |
+| Neden | NCS parçaları oyunlarda ticari kullanım için ayrı (ücretli) lisans istiyor; YouTube tanıtımlarında da telif riski vardı |
+
+- **Beş NCS parçası ve dosyaları silindi** (Invincible, Fearless pt. II, Sky High, Mortals, Royalty; `frontend/assets/audio/music/` içindeki eski mp3'ler repodan çıktı). Oyun paketi ~18 MB küçüldü (müzik 33 MB → 15 MB).
+- **Beş özgün LenstedReal parçası eklendi** (192 kbps MP3, 44,1 kHz stereo), Ayarlar'da Türkçe/İngilizce ad ve alt satırla:
+
+  | Dosya | TR | EN |
+  |---|---|---|
+  | `istiklal_kosusu.mp3` | İstiklal Koşusu — LenstedReal feat. Kırmızı Tramvay | Istiklal Run — LenstedReal feat. Red Tram |
+  | `galata_ruzgari.mp3` | Galata Rüzgârı — LenstedReal & Galata Kulesi | Galata Breeze — LenstedReal & Galata Tower |
+  | `bogaz_isiklari.mp3` | Boğaz Işıkları — LenstedReal feat. Boğaz Martıları | Bosphorus Lights — LenstedReal feat. Bosphorus Gulls |
+  | `sirkeci_ekspres.mp3` | Sirkeci Ekspres — LenstedReal x Sirkeci Garı | Sirkeci Express — LenstedReal x Sirkeci Station |
+  | `ortakoy_gecesi.mp3` | Ortaköy Gecesi — LenstedReal feat. Ortaköy Simitçisi | Ortaköy Nights — LenstedReal feat. Ortaköy Simit Seller |
+
+  Varsayılan parça **İstiklal Koşusu**. Koşu sırasında döngü (2,2 sn çapraz geçiş) ve parça değiştirme kuralları (ilk değişim ücretsiz, sonrası reklamla; abonelikte sınırsız) **aynen** kaldı.
+- **Eski kayıt**: telefonda 2.0.0'ın parça kimliği (ör. `invincible`) kayıtlıysa oyun hata vermeden varsayılan parçaya geçer (`knownTrack`).
+- **Ayarlar**: "Müzik bilgileri: NoCopyrightSounds (ncs.io) ›" satırı ve lisanslar sayfasına giden bağlantısı kaldırıldı; yerine bağlantısız düz yazı: TR **"Tüm müzikler: LenstedReal"**, EN **"All music by LenstedReal"**.
+- **Lisanslar metni** (oyun içi `legal.json` + web `docs/licenses.html`): Müzik bölümü "LenstedReal'in özgün eserleri, tüm haklar LenstedReal'de, üçüncü taraf kütüphane yok, tanıtım videolarında da yalnızca bu müzikler" olarak yeniden yazıldı; "Markalar ve isimler"deki NCS atıf cümlesi, süs adların (Kırmızı Tramvay, Galata Kulesi…) gerçek bir sanatçıyı ifade etmediği cümlesiyle değişti. Lisanslar sayfasının tarihi 5 Kasım 2026; **gizlilik, kullanım koşulları ve hesap silme metinlerine dokunulmadı** (tarihleri 4 Kasım 2026 kaldı; her belgenin artık kendi tarihi var).
+- Kodda, metinlerde ve web sayfalarında NCS, ncs.io veya eski sanatçı adı kalmadı (tarama ile doğrulandı).
+- Testler: `tsc`, `expo lint`, `node --test` (i18n anahtar eşitliği, yasal metin yapısı dahil).
+- Geri alma: `git revert <bu commit>` eski mp3'leri ve metinleri geri getirir.

@@ -4,7 +4,7 @@ import { AppState, Platform } from "react-native";
 import Purchases, { type CustomerInfo } from "react-native-purchases";
 
 import { api, ApiError, hasBackend, onWakingChange, setAuthToken, type AuthOut, type MeOut, type MissionsOut, type PlayerOut } from "@/src/api";
-import { audio, DEFAULT_TRACK } from "@/src/audio";
+import { audio, DEFAULT_TRACK, knownTrack } from "@/src/audio";
 import {
   coinBalance,
   enqueue,
@@ -186,7 +186,7 @@ export const reviveCost = (revivesUsed: number) => Math.pow(2, revivesUsed);
 const SESSION_MAX_AGE_MS = 2.5 * 60 * 60 * 1000;
 /** Offline grace for an expired subscription before the phone can re-check it. */
 const AD_FREE_GRACE_MS = 3 * 24 * 60 * 60 * 1000;
-export const APP_VERSION = Constants.expoConfig?.version ?? "2.0.0";
+export const APP_VERSION = Constants.expoConfig?.version ?? "2.0.1";
 
 const randomNickname = () => `Koşucu${Math.floor(1000 + Math.random() * 9000)}`;
 
@@ -296,7 +296,7 @@ export function ProfileProvider({ children }: { children: React.ReactNode }) {
         sound: sound !== false,
         music: music !== false,
         shadows: graphics.shadows,
-        musicTrack: (musicTrack as string) ?? DEFAULT_TRACK,
+        musicTrack: knownTrack(musicTrack), // 2.0.1: the 2.0.0 track ids no longer exist; unknown -> default
         tutorialSeen: tutorialSeen === true,
         hintsSeen: Array.isArray(hintsSeen) ? hintsSeen : [],
         keys: Number(keys) || 0,

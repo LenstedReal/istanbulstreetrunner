@@ -11,7 +11,7 @@ import { ApiError } from "@/src/api";
 import { audio, MUSIC_TRACKS } from "@/src/audio";
 import { ChunkyButton } from "@/src/components/ChunkyButton";
 import { effectiveQuality, QUALITY_ORDER, type QualityPref } from "@/src/game/quality/profiles";
-import { upper, useT } from "@/src/i18n";
+import { upper, useLang, useT } from "@/src/i18n";
 import { APP_VERSION, useProfile } from "@/src/profile";
 import { openStorePage } from "@/src/rating";
 import Purchases, { configureRevenueCat, isPremium, loadMonthlyPackage, premiumExpiry } from "@/src/subscription";
@@ -28,6 +28,7 @@ export default function SettingsScreen() {
   const router = useRouter();
   const profile = useProfile();
   const t = useT();
+  const lang = useLang();
   // null = not edited, show the saved nickname (no state syncing in an effect).
   const [draft, setDraft] = useState<string | null>(null);
   const nick = draft ?? profile.nickname;
@@ -400,8 +401,8 @@ export default function SettingsScreen() {
               >
                 <Ionicons name={active ? "radio-button-on" : "radio-button-off"} size={22} color={active ? colors.info : colors.muted} />
                 <View style={styles.rowText}>
-                  <Text style={styles.rowTitle}>{tr.title}</Text>
-                  <Text style={styles.help}>{tr.artist}</Text>
+                  <Text style={styles.rowTitle}>{tr.title[lang]}</Text>
+                  <Text style={styles.help}>{tr.artist[lang]}</Text>
                 </View>
                 {active && profile.music ? (
                   <Ionicons name="musical-notes" size={18} color={colors.info} />
@@ -416,9 +417,9 @@ export default function SettingsScreen() {
               {trackMsg}
             </Text>
           ) : null}
-          <Pressable onPress={() => router.push("/licenses")} testID="settings-music-credits">
-            <Text style={styles.help}>{t("settings.musicCredits", { credits: "NoCopyrightSounds (ncs.io)" })} ›</Text>
-          </Pressable>
+          <Text style={styles.help} testID="settings-music-credits">
+            {t("settings.musicCredits")}
+          </Text>
         </View>
 
         {/* Game */}

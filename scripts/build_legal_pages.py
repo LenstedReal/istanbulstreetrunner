@@ -99,8 +99,8 @@ def page(key: str, data: dict) -> str:
 <main>
 <header class="top"><a class="brand" href="index.html">Istanbul Street Runner</a><nav>{nav(data)}</nav></header>
 <p class="switch"><a href="#tr">Türkçe</a> · <a href="#en">English</a></p>
-{block(doc['tr'], 'tr', data['updated'])}
-{block(doc['en'], 'en', data['updated'])}
+{block(doc['tr'], 'tr', doc.get('updated', data['updated']))}
+{block(doc['en'], 'en', doc.get('updated', data['updated']))}
 <footer>{html.escape(data['developer'])} · {linkify(data['contact'])}</footer>
 </main>
 </body>
