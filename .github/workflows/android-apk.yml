@@ -154,6 +154,8 @@ jobs:
               exit 1
             fi
           fi
+          echo "interstitial=$EXPO_PUBLIC_ADMOB_ANDROID_INTERSTITIAL" >> "$GITHUB_OUTPUT"
+          echo "rewarded=$EXPO_PUBLIC_ADMOB_ANDROID_REWARDED" >> "$GITHUB_OUTPUT"
           if [ "$production" = "1" ]; then
             echo "::notice::PRODUCTION build: real AdMob ad units, ads test mode OFF. Upload this AAB to Google Play."
             echo "flavor=production" >> "$GITHUB_OUTPUT"
@@ -271,3 +273,29 @@ jobs:
         run: |
           curl -sSfL -o "$RUNNER_TEMP/bundletool.jar" https://github.com/google/bundletool/releases/download/1.18.1/bundletool-all-1.18.1.jar
           python3 scripts/verify_aab.py "$(ls frontend/android/app/build/outputs/bundle/release/*.aab | head -1)" "$RUNNER_TEMP/bundletool.jar" frontend/app.json
+
+      - name: Verify the real ad units are compiled into the production AAB
+        if: steps.appenv.outputs.flavor == 'production'
+        env:
+          INTERSTITIAL: ${{ steps.appenv.outputs.interstitial }}
+          REWARDED: ${{ steps.appenv.outputs.rewarded }}
+        run: |
+          set -eu
+          aab=$(ls frontend/android/app/build/outputs/bundle/release/*.aab | head -1)
+          rm -rf "$RUNNER_TEMP/aab" && mkdir -p "$RUNNER_TEMP/aab"
+          unzip -q -o "$aab" 'base/assets/*' -d "$RUNNER_TEMP/aab"
+          js=$(find "$RUNNER_TEMP/aab" -name 'index.android.bundle' | head -1)
+          if [ -z "$js" ]; then
+            echo "::warning::JS bundle not found inside the AAB; ad unit check skipped."
+            exit 0
+          fi
+          for id in "$INTERSTITIAL" "$REWARDED"; do
+            case "$id" in ca-app-pub-3940256099942544/*) echo "::error::$id is a Google TEST ad unit; a production build must use the real units."; exit 1;; esac
+            if grep -q -a -F "$id" "$js"; then
+              echo "OK: $id is in the JS bundle"
+            else
+              echo "::error::Ad unit $id was not found in the JS bundle; the production AAB would not use the real ad units."
+              exit 1
+            fi
+          done
+          echo "Real AdMob ad units are compiled into the production AAB."
