@@ -110,10 +110,24 @@ def test_claimed_account_rejects_tokenless_legacy_writes(client):
     assert client.get(f"/api/players/{p['id']}", headers=auth(token)).json()["friend_code"] == p["friend_code"]
 
 
-def test_friend_code_collision_is_retried(client, raw_db):
+def test_friend_code_collision_is_retried(client, raw_db, monkeypatch):
+    from app import security
+
     p = create(client, "İlk Oyuncu")
     # A soft-deleted legacy player keeps its code in the unique index; creation must still succeed.
     raw_db.players.insert_one({"_id": ObjectId(), "nickname": "Silinmiş", "friend_code": "AAAAAA", "deleted_at": raw_db.players.find_one()["created_at"]})
-    for _ in range(5):
-        assert client.post("/api/players", json={"nickname": "Yeni Oyuncu"}).status_code == 200
+    # The first code drawn collides with that player: the server must draw a new one, not fail.
+    real = security.new_friend_code
+    drawn = iter(["AAAAAA"])
+    monkeypatch.setattr(security, "new_friend_code", lambda: next(drawn, None) or real())
+    # Nicknames are unique since 2.0 (a taken one is refused with 409), so each new player has its own.
+    for name in ("Yeni Martı", "Yeni Simit", "Yeni Vapur", "Yeni Tramvay", "Yeni Galata"):
+        r = client.post("/api/players", json={"nickname": name})
+        assert r.status_code == 200, r.text
+        assert r.json()["friend_code"] != "AAAAAA"
     assert p["friend_code"]
+
+
+def test_taken_nickname_is_refused(client):
+    create(client, "Yeni Oyuncu")
+    assert client.post("/api/players", json={"nickname": "Yeni Oyuncu"}).status_code == 409
