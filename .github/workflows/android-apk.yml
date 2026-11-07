@@ -1,8 +1,26 @@
 name: Build Istanbul Street Runner APK
 
+# Two kinds of build come out of this workflow:
+#   * a branch push (or a plain "Run workflow") -> TEST build: Google test ad units, safe to
+#     install on your own phone and click around;
+#   * a version tag push such as v2.0.2 (or "Run workflow" with production = true)
+#     -> PRODUCTION build: the real AdMob ad units below, test mode off. This is the AAB that
+#     goes to Google Play. The tag must match "version" in frontend/app.json.
+# The AdMob ad unit ids are public identifiers (they ship inside every APK), so they live here
+# as defaults; a repository variable of the same name still overrides them.
 on:
   workflow_dispatch:
+    inputs:
+      production:
+        description: "Production build: real AdMob ad units, test mode off (the AAB for Google Play)"
+        type: boolean
+        default: false
   push:
+    branches:
+      - "**"
+    tags:
+      - "v*"
+    # path filters apply to branch pushes only; a tag push always builds
     paths:
       - "frontend/**"
       - "scripts/verify_aab.py"
@@ -93,13 +111,19 @@ jobs:
         run: npm ci
 
       - name: Configure public app environment
+        id: appenv
         working-directory: frontend
         env:
           EXPO_PUBLIC_BACKEND_URL: ${{ vars.EXPO_PUBLIC_BACKEND_URL }}
-          EXPO_PUBLIC_ADMOB_ANDROID_INTERSTITIAL: ${{ vars.EXPO_PUBLIC_ADMOB_ANDROID_INTERSTITIAL }}
-          EXPO_PUBLIC_ADMOB_ANDROID_REWARDED: ${{ vars.EXPO_PUBLIC_ADMOB_ANDROID_REWARDED }}
+          # Real AdMob ad units of Istanbul Street Runner (app ca-app-pub-4558868217074430~6140167741).
+          # Public identifiers, not secrets. A repository variable overrides the default.
+          EXPO_PUBLIC_ADMOB_ANDROID_INTERSTITIAL: ${{ vars.EXPO_PUBLIC_ADMOB_ANDROID_INTERSTITIAL || 'ca-app-pub-4558868217074430/6275899119' }}
+          EXPO_PUBLIC_ADMOB_ANDROID_REWARDED: ${{ vars.EXPO_PUBLIC_ADMOB_ANDROID_REWARDED || 'ca-app-pub-4558868217074430/8456084754' }}
           EXPO_PUBLIC_REVENUECAT_ANDROID_API_KEY: ${{ vars.EXPO_PUBLIC_REVENUECAT_ANDROID_API_KEY }}
           EXPO_PUBLIC_ADS_TEST_MODE: ${{ vars.EXPO_PUBLIC_ADS_TEST_MODE }}
+          PRODUCTION_INPUT: ${{ github.event_name == 'workflow_dispatch' && inputs.production == true }}
+          IS_TAG: ${{ startsWith(github.ref, 'refs/tags/v') }}
+          REF_NAME: ${{ github.ref_name }}
         run: |
           set -eu
           : > .env.production
@@ -114,13 +138,29 @@ jobs:
           printf 'EXPO_PUBLIC_ADMOB_ANDROID_INTERSTITIAL=%s\n' "$EXPO_PUBLIC_ADMOB_ANDROID_INTERSTITIAL" >> .env.production
           printf 'EXPO_PUBLIC_ADMOB_ANDROID_REWARDED=%s\n' "$EXPO_PUBLIC_ADMOB_ANDROID_REWARDED" >> .env.production
           printf 'EXPO_PUBLIC_REVENUECAT_ANDROID_API_KEY=%s\n' "$EXPO_PUBLIC_REVENUECAT_ANDROID_API_KEY" >> .env.production
-          # Google test ads unless the repository variable EXPO_PUBLIC_ADS_TEST_MODE is "0"
-          # (set it to 0 only for the build that goes to Google Play).
-          if [ "${EXPO_PUBLIC_ADS_TEST_MODE:-1}" != "0" ]; then
-            printf 'EXPO_PUBLIC_ADS_TEST_MODE=1\n' >> .env.production
-            echo "::notice::Ads test mode is ON: this build shows Google test ads."
+
+          # Production (real ads) when: a v* tag is built, "Run workflow" was started with
+          # production = true, or the repository variable EXPO_PUBLIC_ADS_TEST_MODE is "0".
+          # Everything else is a test build with Google test ads.
+          production=0
+          if [ "$IS_TAG" = "true" ] || [ "$PRODUCTION_INPUT" = "true" ] || [ "${EXPO_PUBLIC_ADS_TEST_MODE:-}" = "0" ]; then
+            production=1
+          fi
+          if [ "$IS_TAG" = "true" ]; then
+            # the tag must name the version in app.json, so the AAB that reaches Play is the one you meant
+            app_version=$(node -p "require('./app.json').expo.version")
+            if [ "v$app_version" != "$REF_NAME" ]; then
+              echo "::error::Tag $REF_NAME does not match app.json version $app_version (expected tag v$app_version)."
+              exit 1
+            fi
+          fi
+          if [ "$production" = "1" ]; then
+            echo "::notice::PRODUCTION build: real AdMob ad units, ads test mode OFF. Upload this AAB to Google Play."
+            echo "flavor=production" >> "$GITHUB_OUTPUT"
           else
-            echo "::notice::Ads test mode is OFF: this build requests real ads."
+            printf 'EXPO_PUBLIC_ADS_TEST_MODE=1\n' >> .env.production
+            echo "::notice::TEST build: Google test ads (ads test mode ON). Not for Google Play."
+            echo "flavor=test" >> "$GITHUB_OUTPUT"
           fi
           echo "Backend, Android AdMob, and RevenueCat environment configured."
 
@@ -209,10 +249,12 @@ jobs:
           if-no-files-found: ignore
           retention-days: 7
 
+      # Artifact names carry the flavor: "...-test" shows Google test ads,
+      # "...-production" is the real-ads build for Google Play.
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: istanbulstreetrunner-apk
+          name: istanbulstreetrunner-apk-${{ steps.appenv.outputs.flavor }}
           path: frontend/android/app/build/outputs/apk/release/*.apk
           if-no-files-found: error
           retention-days: 7
@@ -220,7 +262,7 @@ jobs:
       - name: Upload AAB
         uses: actions/upload-artifact@v4
         with:
-          name: istanbulstreetrunner-aab
+          name: istanbulstreetrunner-aab-${{ steps.appenv.outputs.flavor }}
           path: frontend/android/app/build/outputs/bundle/release/*.aab
           if-no-files-found: error
           retention-days: 7

@@ -35,7 +35,7 @@ cd backend && python -m pytest -q
 
 ## Yayın
 
-- **APK / AAB**: `main`'e her push'ta GitHub Actions derler; imza anahtarları repo secret'larında.
+- **APK / AAB**: her push'ta GitHub Actions **test** derlemesi alır (Google test reklamları). `vX.Y.Z` etiketi push edilince (etiket `frontend/app.json` sürümüyle aynı olmalı) **üretim** derlemesi alınır: gerçek AdMob reklam birimleri, test modu kapalı; Play'e giden AAB budur (`istanbulstreetrunner-aab-production`). İmza anahtarları repo secret'larında.
 - **Sunucu**: Render (`render.yaml`), `main`'den otomatik dağıtım. Ortam değişkenleri: `MONGO_URL`, `DB_NAME`, isteğe bağlı `ADMIN_SECRET`, `RESERVED_NICKNAMES`, `REVENUECAT_SECRET_KEY`.
 - **Hukuk sayfaları**: `frontend/src/legal/legal.json` → `python scripts/build_legal_pages.py` → `docs/`.
 - Ayrıntılı değişiklik günlüğü: [`docs/CHANGELOG_TR.md`](docs/CHANGELOG_TR.md).
