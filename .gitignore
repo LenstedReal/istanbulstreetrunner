@@ -88,3 +88,7 @@ credentials.json
 *.env
 !.env.example
 !**/.env.example
+
+# signing keys never belong in the repository (CI reads them from GitHub Secrets)
+*.jks
+*.keystore
