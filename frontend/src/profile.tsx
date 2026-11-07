@@ -186,7 +186,7 @@ export const reviveCost = (revivesUsed: number) => Math.pow(2, revivesUsed);
 const SESSION_MAX_AGE_MS = 2.5 * 60 * 60 * 1000;
 /** Offline grace for an expired subscription before the phone can re-check it. */
 const AD_FREE_GRACE_MS = 3 * 24 * 60 * 60 * 1000;
-export const APP_VERSION = Constants.expoConfig?.version ?? "2.0.1";
+export const APP_VERSION = Constants.expoConfig?.version ?? "2.0.2";
 
 const randomNickname = () => `Koşucu${Math.floor(1000 + Math.random() * 9000)}`;
 

@@ -265,3 +265,17 @@ Bu ortamda **çalıştırılan** testler:
 - Kodda, metinlerde ve web sayfalarında NCS, ncs.io veya eski sanatçı adı kalmadı (tarama ile doğrulandı).
 - Testler: `tsc`, `expo lint`, `node --test` (i18n anahtar eşitliği, yasal metin yapısı dahil).
 - Geri alma: `git revert <bu commit>` eski mp3'leri ve metinleri geri getirir.
+
+---
+
+## 16. Sürüm 2.0.2 (7): Google Play üretim derlemesi
+
+| | |
+|---|---|
+| Sürüm | **2.0.2**, versionCode **7** (önceki: 2.0.1 / 6) |
+| Neden | 7 Kasım 2026'da Play üretim erişimi verildi. Üretime giden derleme gerçek reklam birimleriyle ve test modu kapalı alınacağı için yeni bir sürüm kodu gerekiyor |
+
+- Oyun kodunda değişiklik yok; yalnızca sürüm numarası ve sürüm kodu arttı (`frontend/app.json`, `package.json`, `profile.tsx` yedek sürüm metni, README).
+- Üretim derlemesi için GitHub değişkenleri: `EXPO_PUBLIC_ADMOB_ANDROID_INTERSTITIAL` ve `EXPO_PUBLIC_ADMOB_ANDROID_REWARDED` gerçek AdMob birim kimlikleri, `EXPO_PUBLIC_ADS_TEST_MODE` = `0`. Bu değerler repoda değil, GitHub ayarlarında tutulur.
+- Yayın sırası §8'deki gibi; ek olarak AdMob'da GDPR mesajı, Play'de abonelik ürününün etkinleştirilmesi ve `app-ads.txt` (bkz. §8 madde 8).
+

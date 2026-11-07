@@ -1,6 +1,6 @@
 # Istanbul Street Runner
 
-İstanbul sokaklarında geçen sonsuz koşu oyunu. Android (Google Play), sürüm **2.0.1 (6)**, paket `com.lenstedreal.istanbulrunner`.
+İstanbul sokaklarında geçen sonsuz koşu oyunu. Android (Google Play), sürüm **2.0.2 (7)**, paket `com.lenstedreal.istanbulrunner`.
 
 İstiklal'den Boğaz'a beş semt, her semt bir seviye. Tramvaydan kaç, simit arabasının üstünden atla, martıya simidini kaptırma.
 
